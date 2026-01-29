@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/analytics/page": "/admin/analytics",
+  "/admin/content/page": "/admin/content",
+  "/admin/dashboard/page": "/admin/dashboard",
+  "/admin/login/page": "/admin/login",
+  "/admin/reports/page": "/admin/reports",
+  "/forgot-password/page": "/forgot-password",
+  "/home/page": "/home",
+  "/login/page": "/login",
+  "/page": "/",
+  "/profile/page": "/profile",
+  "/report/page": "/report",
+  "/signup-success/page": "/signup-success",
+  "/signup/page": "/signup"
+}
