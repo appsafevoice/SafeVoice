@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
-import { Eye, EyeOff, Upload, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Upload, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 export function SignupForm() {
   const router = useRouter()
@@ -19,6 +19,7 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [schoolIdFile, setSchoolIdFile] = useState<File | null>(null)
   const [formData, setFormData] = useState({
     lrn: "",
@@ -28,6 +29,38 @@ export function SignupForm() {
     password: "",
     confirmPassword: "",
   })
+
+  // Password validation rules
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = []
+    
+    if (password.length < 8) {
+      errors.push("At least 8 characters")
+    }
+    
+    if (!/\d/.test(password)) {
+      errors.push("At least 1 number")
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push("At least 1 special character")
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push("At least 1 uppercase letter")
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push("At least 1 lowercase letter")
+    }
+    
+    return errors
+  }
+
+  const handlePasswordChange = (password: string) => {
+    setFormData({ ...formData, password })
+    setPasswordErrors(validatePassword(password))
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -39,19 +72,26 @@ export function SignupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setLoading(true)
+    
+    // Validate password
+    const passwordValidationErrors = validatePassword(formData.password)
+    if (passwordValidationErrors.length > 0) {
+      setError("Please fix password requirements")
+      setPasswordErrors(passwordValidationErrors)
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
-      setLoading(false)
       return
     }
 
     if (formData.lrn.length !== 12) {
       setError("LRN must be 12 digits")
-      setLoading(false)
       return
     }
+
+    setLoading(true)
 
     try {
       const supabase = createClient()
@@ -79,6 +119,18 @@ export function SignupForm() {
       setLoading(false)
     }
   }
+
+  // Password requirements checklist
+  const passwordRequirements = [
+    { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+    { label: "At least 1 number", test: (p: string) => /\d/.test(p) },
+    { label: "At least 1 special character", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+    { label: "At least 1 uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+    { label: "At least 1 lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+  ]
+
+  // Check if password is valid (all requirements met)
+  const isPasswordValid = passwordRequirements.every(req => req.test(formData.password))
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
@@ -156,11 +208,10 @@ export function SignupForm() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
+                    placeholder="Create a secure password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
                     required
-                    minLength={6}
                     className="bg-input pr-10"
                   />
                   <button
@@ -171,6 +222,30 @@ export function SignupForm() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                
+                {/* Password requirements checklist */}
+                {formData.password && (
+                  <div className="mt-2 space-y-1 p-3 bg-muted/50 rounded-md">
+                    <p className="text-sm font-medium">Password must contain:</p>
+                    <div className="space-y-1">
+                      {passwordRequirements.map((req, index) => {
+                        const isMet = req.test(formData.password)
+                        return (
+                          <div key={index} className="flex items-center gap-2">
+                            {isMet ? (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span className={`text-xs ${isMet ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {req.label}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -183,7 +258,12 @@ export function SignupForm() {
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     required
-                    className="bg-input pr-10"
+                    className={`bg-input pr-10 ${
+                      formData.confirmPassword && 
+                      formData.password !== formData.confirmPassword 
+                        ? 'border-destructive focus-visible:ring-destructive' 
+                        : ''
+                    }`}
                   />
                   <button
                     type="button"
@@ -193,6 +273,14 @@ export function SignupForm() {
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
+                {formData.confirmPassword && formData.password === formData.confirmPassword && isPasswordValid && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" /> Passwords match
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -212,7 +300,11 @@ export function SignupForm() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading || !isPasswordValid || formData.password !== formData.confirmPassword}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
