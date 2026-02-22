@@ -17,9 +17,18 @@ export interface Report {
   bullying_type: string
   details: string
   attachments?: string[]
-  status: "pending" | "reviewed" | "resolved"
+  status: "pending" | "reviewed" | "in_progress" | "resolved"
   created_at: string
   updated_at: string
+}
+
+export interface ReportComment {
+  id: string
+  report_id: string
+  author_id?: string
+  author_role: "student" | "admin"
+  content: string
+  created_at: string
 }
 
 export interface Announcement {
@@ -30,4 +39,5 @@ export interface Announcement {
   type: "quote" | "reminder" | "announcement"
   is_active: boolean
   created_at: string
+  hearts_count?: number
 }

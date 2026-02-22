@@ -64,7 +64,7 @@ export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
   if (success) {
     return (
       <Card className="border-0 shadow-lg">
-        <CardContent className="p-6 text-center space-y-4">
+        <CardContent className="p-5 sm:p-6 text-center space-y-4">
           <div className="flex justify-center">
             <div className="p-3 bg-green-100 rounded-full">
               <CheckCircle className="w-8 h-8 text-green-600" />
@@ -83,17 +83,17 @@ export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="pb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2 sm:items-center">
           <button onClick={onClose} className="p-1 -ml-1 hover:bg-accent rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <CardTitle className="text-lg">Change Password</CardTitle>
+          <div className="min-w-0">
+            <CardTitle className="text-lg sm:text-xl">Change Password</CardTitle>
             <CardDescription>Update your account password</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
 

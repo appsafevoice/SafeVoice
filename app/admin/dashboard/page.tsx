@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -104,6 +105,7 @@ export default function AdminDashboardPage() {
       icon: FileText,
       color: "text-cyan-400",
       bgColor: "bg-cyan-500/20",
+      href: "/admin/reports",
     },
     {
       title: "Pending Review",
@@ -111,6 +113,7 @@ export default function AdminDashboardPage() {
       icon: Clock,
       color: "text-amber-400",
       bgColor: "bg-amber-500/20",
+      href: "/admin/reports?status=pending",
     },
     {
       title: "Resolved Cases",
@@ -118,13 +121,15 @@ export default function AdminDashboardPage() {
       icon: TrendingUp,
       color: "text-green-400",
       bgColor: "bg-green-500/20",
+      href: "/admin/reports?status=resolved",
     },
     {
-      title: "Active Announcements",
+      title: "Active Post",
       value: announcements.filter((a) => a.is_active).length,
       icon: Megaphone,
       color: "text-purple-400",
       bgColor: "bg-purple-500/20",
+      href: "/admin/content",
     },
   ]
 
@@ -140,19 +145,21 @@ export default function AdminDashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.title} className="bg-slate-800/50 border-slate-700">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+            <Link key={stat.title} href={stat.href} className="block">
+              <Card className="bg-slate-800/50 border-slate-700 hover:border-cyan-500/50 transition-colors cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{stat.value}</p>
+                      <p className="text-xs text-slate-400">{stat.title}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
-                    <p className="text-xs text-slate-400">{stat.title}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 
@@ -178,6 +185,7 @@ export default function AdminDashboardPage() {
                         borderRadius: "8px",
                       }}
                       labelStyle={{ color: "#f8fafc" }}
+                      itemStyle={{ color: "#f8fafc" }}
                     />
                     <Line
                       type="monotone"
@@ -211,7 +219,9 @@ export default function AdminDashboardPage() {
                         outerRadius={80}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percents }) => `${name} ${(percents * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${Number.isFinite(percent) ? (percent * 100).toFixed(0) : 0}%`
+                        }
                         labelLine={false}
                       >
                         {bullyingTypeData.map((_, index) => (
@@ -224,6 +234,7 @@ export default function AdminDashboardPage() {
                           border: "1px solid #334155",
                           borderRadius: "8px",
                         }}
+                        itemStyle={{ color: "#f8fafc" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>

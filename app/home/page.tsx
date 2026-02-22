@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { AppShell } from "@/components/layout/app-shell"
 import { Logo } from "@/components/ui/logo"
 import { ReportButton } from "@/components/home/report-button"
-import { AnnouncementCard } from "@/components/home/announcement-card"
+import { AnnouncementsFeed } from "@/components/home/announcements-feed"
 import type { Announcement, Profile } from "@/lib/supabase/types"
 
 const defaultAnnouncements: Announcement[] = [
@@ -61,13 +61,13 @@ export default async function HomePage() {
 
   return (
     <AppShell>
-      <div className="p-4 space-y-6 max-w-md mx-auto">
+      <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
         {/* Header */}
-        <header className="flex items-center justify-between pt-2">
+        <header className="flex items-start justify-between gap-4 pt-2">
           <Logo size="sm" />
-          <div className="text-right">
+          <div className="text-right min-w-0">
             <p className="text-sm text-muted-foreground">Welcome back,</p>
-            <p className="font-semibold text-foreground">{profile?.first_name || "Student"}</p>
+            <p className="font-semibold text-foreground truncate">{profile?.first_name || "Student"}</p>
           </div>
         </header>
 
@@ -79,18 +79,17 @@ export default async function HomePage() {
         {/* Announcements Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Updates & Reminders</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Updates & Reminders</h2>
           </div>
-          <div className="space-y-3">
-            {displayAnnouncements.map((announcement) => (
-              <AnnouncementCard key={announcement.id} announcement={announcement} />
-            ))}
-          </div>
+          <AnnouncementsFeed
+            initialAnnouncements={announcements && announcements.length > 0 ? announcements : []}
+            fallbackAnnouncements={defaultAnnouncements}
+          />
         </section>
 
         {/* Motivational Section */}
-        <section className="p-4 bg-gradient-to-br from-primary/10 to-accent/30 rounded-2xl">
-          <p className="text-center text-sm text-foreground/80 italic">
+        <section className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-accent/30 rounded-2xl">
+          <p className="text-center text-sm sm:text-base text-foreground/80 italic">
             {
               '"Courage is not the absence of fear, but rather the judgment that something else is more important than fear."'
             }

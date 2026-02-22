@@ -49,18 +49,18 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10 bg-background">
+      <div className="w-full max-w-lg space-y-6">
         <div className="flex justify-center">
           <Logo size="lg" />
         </div>
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-center">Welcome Back</CardTitle>
             <CardDescription className="text-center">Sign in to your SafeVoice account</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
 

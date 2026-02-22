@@ -19,18 +19,18 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
   return (
     <Card className="border-0 shadow-lg overflow-hidden">
       <div className="h-24 bg-gradient-to-br from-primary to-primary/70" />
-      <CardContent className="relative pt-0 pb-6">
+      <CardContent className="relative pt-0 pb-6 px-4 sm:px-6">
         <div className="flex flex-col items-center -mt-12">
           <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
             <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <h2 className="mt-3 text-xl font-bold text-foreground">{displayName}</h2>
-          <p className="text-sm text-muted-foreground">{profile.email}</p>
+          <h2 className="mt-3 text-xl sm:text-2xl font-bold text-foreground text-center break-words">{displayName}</h2>
+          <p className="text-sm text-muted-foreground text-center break-all">{profile.email}</p>
           {profile.lrn && (
-            <div className="mt-2 px-3 py-1 bg-muted rounded-full">
-              <span className="text-xs text-muted-foreground">LRN: {profile.lrn}</span>
+            <div className="mt-2 px-3 py-1 bg-muted rounded-full max-w-full">
+              <span className="text-xs text-muted-foreground break-all">LRN: {profile.lrn}</span>
             </div>
           )}
         </div>

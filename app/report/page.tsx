@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { AppShell } from "@/components/layout/app-shell"
 import { ReportForm } from "@/components/report/report-form"
 
 export default async function ReportPage() {
@@ -12,5 +13,9 @@ export default async function ReportPage() {
     redirect("/login")
   }
 
-  return <ReportForm userId={user.id} />
+  return (
+    <AppShell>
+      <ReportForm userId={user.id} />
+    </AppShell>
+  )
 }

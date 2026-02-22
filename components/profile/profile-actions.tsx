@@ -25,14 +25,14 @@ export function ProfileActions({ onChangePassword }: ProfileActionsProps) {
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardContent className="p-4 space-y-2">
-        <Button variant="outline" className="w-full justify-start bg-transparent" onClick={onChangePassword}>
+      <CardContent className="p-4 sm:p-5 space-y-2">
+        <Button variant="outline" className="w-full justify-start bg-transparent min-h-10" onClick={onChangePassword}>
           <Key className="w-4 h-4 mr-3" />
           Change Password
         </Button>
         <Button
           variant="outline"
-          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 bg-transparent"
+          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 bg-transparent min-h-10"
           onClick={handleLogout}
           disabled={loggingOut}
         >

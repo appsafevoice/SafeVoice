@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
   BarChart,
@@ -32,6 +34,34 @@ const COLORS = ["#06b6d4", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e", "#ec4899"
 
 export default function AdminAnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([])
+  const [monthlyStart, setMonthlyStart] = useState(() => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - 5)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [monthlyEnd, setMonthlyEnd] = useState(() => {
+    const date = new Date()
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [dailyStart, setDailyStart] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 13)
+    return date.toISOString().split("T")[0]
+  })
+  const [dailyEnd, setDailyEnd] = useState(() => {
+    const date = new Date()
+    return date.toISOString().split("T")[0]
+  })
+  const [typeTrendStart, setTypeTrendStart] = useState(() => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - 5)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [typeTrendEnd, setTypeTrendEnd] = useState(() => {
+    const date = new Date()
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [selectedTypeTrend, setSelectedTypeTrend] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
 
@@ -57,67 +87,112 @@ export default function AdminAnalyticsPage() {
     return acc
   }, [])
 
-  // Status distribution
-  const statusData = [
-    { name: "Pending", value: reports.filter((r) => r.status === "pending" || !r.status).length },
-    { name: "In Progress", value: reports.filter((r) => r.status === "in_progress").length },
-    { name: "Resolved", value: reports.filter((r) => r.status === "resolved").length },
-  ].filter((d) => d.value > 0)
+  // Monthly trend (selectable range)
+  const monthlyData = (() => {
+    if (!monthlyStart || !monthlyEnd) return []
 
-  // Monthly trend (last 6 months)
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - (5 - i))
-    const month = date.toLocaleString("en-US", { month: "short" })
-    const year = date.getFullYear()
-    const monthStart = new Date(year, date.getMonth(), 1)
-    const monthEnd = new Date(year, date.getMonth() + 1, 0)
+    const [startYear, startMonth] = monthlyStart.split("-").map(Number)
+    const [endYear, endMonth] = monthlyEnd.split("-").map(Number)
+    const startDate = new Date(startYear, startMonth - 1, 1)
+    const endDate = new Date(endYear, endMonth - 1, 1)
 
-    const count = reports.filter((r) => {
-      const reportDate = new Date(r.created_at)
-      return reportDate >= monthStart && reportDate <= monthEnd
-    }).length
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return []
 
-    return { month, reports: count }
-  })
+    const months: { month: string; reports: number }[] = []
+    const cursor = new Date(startDate)
 
-  // Daily trend (last 14 days)
-  const dailyData = Array.from({ length: 14 }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (13 - i))
-    const dateStr = date.toISOString().split("T")[0]
-    const count = reports.filter((r) => r.created_at.split("T")[0] === dateStr).length
+    while (cursor <= endDate && months.length < 36) {
+      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
+      const yearLabel = cursor.getFullYear().toString().slice(-2)
+      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
 
-    return {
-      date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      reports: count,
+      const count = reports.filter((r) => {
+        const reportDate = new Date(r.created_at)
+        return reportDate >= monthStart && reportDate <= monthEnd
+      }).length
+
+      months.push({ month: `${monthLabel} '${yearLabel}`, reports: count })
+      cursor.setMonth(cursor.getMonth() + 1)
     }
-  })
 
-  // Type by month for stacked chart
-  const typeByMonth = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - (5 - i))
-    const month = date.toLocaleString("en-US", { month: "short" })
-    const year = date.getFullYear()
-    const monthStart = new Date(year, date.getMonth(), 1)
-    const monthEnd = new Date(year, date.getMonth() + 1, 0)
+    return months
+  })()
 
-    const monthReports = reports.filter((r) => {
-      const reportDate = new Date(r.created_at)
-      return reportDate >= monthStart && reportDate <= monthEnd
-    })
+  // Daily trend (selectable date range)
+  const dailyData = (() => {
+    if (!dailyStart || !dailyEnd) return []
 
-    const data: { [key: string]: string | number } = { month }
-    const types = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
-    types.forEach((type) => {
-      data[type] = monthReports.filter((r) => r.bullying_type === type).length
-    })
+    const startDate = new Date(dailyStart)
+    const endDate = new Date(dailyEnd)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return []
 
-    return data
-  })
+    const rows: { date: string; reports: number }[] = []
+    const cursor = new Date(startDate)
+
+    while (cursor <= endDate && rows.length < 120) {
+      const dateStr = cursor.toISOString().split("T")[0]
+      const count = reports.filter((r) => r.created_at.split("T")[0] === dateStr).length
+
+      rows.push({
+        date: cursor.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        reports: count,
+      })
+
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return rows
+  })()
 
   const allTypes = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
+
+  // Type by month for stacked chart with date range + type filter
+  const typeByMonth = (() => {
+    if (!typeTrendStart || !typeTrendEnd) return []
+
+    const [startYear, startMonth] = typeTrendStart.split("-").map(Number)
+    const [endYear, endMonth] = typeTrendEnd.split("-").map(Number)
+    const startDate = new Date(startYear, startMonth - 1, 1)
+    const endDate = new Date(endYear, endMonth - 1, 1)
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return []
+
+    const selectedTypes = selectedTypeTrend === "all" ? allTypes : [selectedTypeTrend]
+    const filteredReports = reports.filter((r) => {
+      const reportDate = new Date(r.created_at)
+      return (
+        reportDate >= new Date(startDate.getFullYear(), startDate.getMonth(), 1) &&
+        reportDate <= new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0) &&
+        (selectedTypeTrend === "all" || r.bullying_type === selectedTypeTrend)
+      )
+    })
+
+    const rows: { [key: string]: string | number }[] = []
+    const cursor = new Date(startDate)
+
+    while (cursor <= endDate && rows.length < 36) {
+      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
+      const yearLabel = cursor.getFullYear().toString().slice(-2)
+      const monthStartDate = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+      const monthEndDate = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
+      const row: { [key: string]: string | number } = { month: `${monthLabel} '${yearLabel}` }
+
+      selectedTypes.forEach((type) => {
+        row[type] = filteredReports.filter((r) => {
+          const reportDate = new Date(r.created_at)
+          return r.bullying_type === type && reportDate >= monthStartDate && reportDate <= monthEndDate
+        }).length
+      })
+
+      rows.push(row)
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+
+    return rows
+  })()
+
+  const visibleTypeKeys = selectedTypeTrend === "all" ? allTypes : [selectedTypeTrend]
 
   if (isLoading) {
     return (
@@ -137,7 +212,6 @@ export default function AdminAnalyticsPage() {
           <h1 className="text-2xl font-bold text-white">Data Reports</h1>
           <p className="text-slate-400">Comprehensive analytics and visualizations of bullying reports</p>
         </div>
-
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-slate-800/50 border-slate-700">
@@ -176,40 +250,65 @@ export default function AdminAnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Monthly Trend */}
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Monthly Trend</CardTitle>
-              <CardDescription className="text-slate-400">Reports over the last 6 months</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-white">Monthly Trend</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Reports between selected months
+                </CardDescription>
+              </div>
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="month"
+                  value={monthlyStart}
+                  onChange={(e) => setMonthlyStart(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+                <Input
+                  type="month"
+                  value={monthlyEnd}
+                  onChange={(e) => setMonthlyEnd(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-                    <YAxis stroke="#94a3b8" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "#f8fafc" }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="reports"
-                      stroke="#06b6d4"
-                      fillOpacity={1}
-                      fill="url(#colorReports)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyData}>
+                      <defs>
+                        <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                      <YAxis stroke="#94a3b8" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#1e293b",
+                          border: "1px solid #334155",
+                          borderRadius: "8px",
+                        }}
+                        labelStyle={{ color: "#f8fafc" }}
+                        itemStyle={{ color: "#f8fafc" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="reports"
+                        stroke="#06b6d4"
+                        fillOpacity={1}
+                        fill="url(#colorReports)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-500">
+                    Select a valid month range
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -233,6 +332,10 @@ export default function AdminAnalyticsPage() {
                         outerRadius={90}
                         paddingAngle={3}
                         dataKey="value"
+                        label={({ name, percent }) =>
+                          `${name} ${Number.isFinite(percent) ? (percent * 100).toFixed(0) : 0}%`
+                        }
+                        labelLine={false}
                       >
                         {typeData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -244,6 +347,7 @@ export default function AdminAnalyticsPage() {
                           border: "1px solid #334155",
                           borderRadius: "8px",
                         }}
+                        itemStyle={{ color: "#f8fafc" }}
                       />
                       <Legend
                         verticalAlign="bottom"
@@ -261,46 +365,34 @@ export default function AdminAnalyticsPage() {
 
           {/* Daily Trend */}
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Daily Activity</CardTitle>
-              <CardDescription className="text-slate-400">Reports in the last 14 days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} angle={-45} textAnchor="end" height={60} />
-                    <YAxis stroke="#94a3b8" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "#f8fafc" }}
-                    />
-                    <Bar dataKey="reports" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-white">Daily Activity</CardTitle>
+                <CardDescription className="text-slate-400">Reports between selected dates</CardDescription>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Status Distribution */}
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Status Overview</CardTitle>
-              <CardDescription className="text-slate-400">Current status of all reports</CardDescription>
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="date"
+                  value={dailyStart}
+                  onChange={(e) => setDailyStart(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+                <Input
+                  type="date"
+                  value={dailyEnd}
+                  onChange={(e) => setDailyEnd(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-72">
-                {statusData.length > 0 ? (
+                {dailyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={statusData} layout="vertical">
+                    <BarChart data={dailyData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis type="number" stroke="#94a3b8" fontSize={12} />
-                      <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} width={80} />
+                      <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} angle={-45} textAnchor="end" height={60} />
+                      <YAxis stroke="#94a3b8" fontSize={12} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "#1e293b",
@@ -308,40 +400,60 @@ export default function AdminAnalyticsPage() {
                           borderRadius: "8px",
                         }}
                         labelStyle={{ color: "#f8fafc" }}
+                        itemStyle={{ color: "#f8fafc" }}
                       />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {statusData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={
-                              entry.name === "Resolved"
-                                ? "#22c55e"
-                                : entry.name === "In Progress"
-                                  ? "#f59e0b"
-                                  : "#64748b"
-                            }
-                          />
-                        ))}
-                      </Bar>
+                      <Bar dataKey="reports" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">No data available</div>
+                  <div className="h-full flex items-center justify-center text-slate-500">
+                    Select a valid date range
+                  </div>
                 )}
               </div>
             </CardContent>
           </Card>
+
         </div>
 
         {/* Type by Month Stacked Chart */}
         <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Incident Types Over Time</CardTitle>
-            <CardDescription className="text-slate-400">Monthly breakdown by bullying category</CardDescription>
+          <CardHeader className="flex flex-col gap-3">
+            <div>
+              <CardTitle className="text-white">Incident Types Over Time</CardTitle>
+              <CardDescription className="text-slate-400">Monthly breakdown by bullying category</CardDescription>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Select value={selectedTypeTrend} onValueChange={setSelectedTypeTrend}>
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectValue placeholder="Filter type" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectItem value="all" className="text-white">All Types</SelectItem>
+                  {allTypes.map((type) => (
+                    <SelectItem key={type} value={type} className="text-white">
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="month"
+                value={typeTrendStart}
+                onChange={(e) => setTypeTrendStart(e.target.value)}
+                className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+              />
+              <Input
+                type="month"
+                value={typeTrendEnd}
+                onChange={(e) => setTypeTrendEnd(e.target.value)}
+                className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              {allTypes.length > 0 ? (
+              {visibleTypeKeys.length > 0 && typeByMonth.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={typeByMonth}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -354,25 +466,28 @@ export default function AdminAnalyticsPage() {
                         borderRadius: "8px",
                       }}
                       labelStyle={{ color: "#f8fafc" }}
+                      itemStyle={{ color: "#f8fafc" }}
                     />
                     <Legend
                       verticalAlign="top"
                       height={36}
                       formatter={(value) => <span className="text-slate-300 text-sm">{value}</span>}
                     />
-                    {allTypes.map((type, index) => (
+                    {visibleTypeKeys.map((type, index) => (
                       <Bar
                         key={type}
                         dataKey={type}
                         stackId="a"
                         fill={COLORS[index % COLORS.length]}
-                        radius={index === allTypes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        radius={index === visibleTypeKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                       />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-slate-500">No data available</div>
+                <div className="h-full flex items-center justify-center text-slate-500">
+                  No data available for selected type/date range
+                </div>
               )}
             </div>
           </CardContent>

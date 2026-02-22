@@ -46,13 +46,5 @@ export default async function ProfilePage() {
     }
   }
 
-  // Get recent reports
-  const { data: reports } = await supabase
-    .from("reports")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  return <ProfileView profile={profile} reports={reports || []} />
+  return <ProfileView profile={profile} />
 }

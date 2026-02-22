@@ -133,18 +133,18 @@ export function SignupForm() {
   const isPasswordValid = passwordRequirements.every(req => req.test(formData.password))
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex flex-col items-center px-4 py-6 sm:px-6 sm:py-10 bg-background">
+      <div className="w-full max-w-2xl space-y-6">
         <div className="flex justify-center">
           <Logo size="lg" />
         </div>
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-center">Create Account</CardTitle>
             <CardDescription className="text-center">Sign up to report incidents safely</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
 
@@ -162,7 +162,7 @@ export function SignupForm() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
                   <Input
@@ -293,7 +293,7 @@ export function SignupForm() {
                     className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent/50 transition-colors"
                   >
                     <Upload className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground truncate max-w-full">
                       {schoolIdFile ? schoolIdFile.name : "Upload your School ID (optional)"}
                     </span>
                   </button>

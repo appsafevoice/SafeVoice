@@ -18,10 +18,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Plus, Pencil, Trash2, Bell, Quote, Megaphone, CheckCircle, AlertCircle, Upload, X } from "lucide-react"
+import { Plus, Pencil, Trash2, Bell, Quote, Megaphone, CheckCircle, AlertCircle, Upload, X, Heart } from "lucide-react"
 
 interface Announcement {
   id: string
@@ -31,6 +30,7 @@ interface Announcement {
   image_url: string | null
   is_active: boolean
   created_at: string
+  hearts_count?: number
 }
 
 export default function AdminContentPage() {
@@ -55,12 +55,35 @@ export default function AdminContentPage() {
 
   useEffect(() => {
     fetchAnnouncements()
+    const channel = supabase
+      .channel("admin-content-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, fetchAnnouncements)
+      .on("postgres_changes", { event: "*", schema: "public", table: "announcement_likes" }, fetchAnnouncements)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchAnnouncements = async () => {
     const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
 
-    if (data) setAnnouncements(data)
+    if (data) {
+      const { data: likes } = await supabase.from("announcement_likes").select("announcement_id")
+      const likesCountByAnnouncementId = (likes || []).reduce<Record<string, number>>((acc, row) => {
+        acc[row.announcement_id] = (acc[row.announcement_id] || 0) + 1
+        return acc
+      }, {})
+
+      const announcementsWithHearts = data.map((announcement) => ({
+        ...announcement,
+        hearts_count: likesCountByAnnouncementId[announcement.id] || 0,
+      }))
+
+      setAnnouncements(announcementsWithHearts)
+    }
     setIsLoading(false)
   }
 
@@ -237,20 +260,6 @@ export default function AdminContentPage() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-200">Type</Label>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                      <SelectItem value="announcement">Announcement</SelectItem>
-                      <SelectItem value="quote">Motivational Quote</SelectItem>
-                      <SelectItem value="reminder">Reminder</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label className="text-slate-200">Title</Label>
                   <Input
                     value={title}
@@ -396,6 +405,10 @@ export default function AdminContentPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">
                         {new Date(announcement.created_at).toLocaleDateString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-xs text-pink-300">
+                        <Heart className="w-3.5 h-3.5" />
+                        {announcement.hearts_count || 0}
                       </span>
                       <div className="flex gap-2">
                         <Button

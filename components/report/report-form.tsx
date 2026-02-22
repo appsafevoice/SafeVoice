@@ -23,6 +23,21 @@ const bullyingTypes = [
   { value: "other", label: "Other" },
 ]
 
+const incidentLocations = [
+  { value: "classroom", label: "Classroom" },
+  { value: "hallway", label: "Hallway" },
+  { value: "cafeteria", label: "Cafeteria" },
+  { value: "playground", label: "Playground" },
+  { value: "restroom", label: "Restroom" },
+  { value: "school_gate", label: "School Gate" },
+  { value: "online", label: "Online / Social Media" },
+  { value: "outside_campus", label: "Outside Campus" },
+  { value: "others", label: "Others" },
+]
+
+const MAX_FILES = 10
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024
+
 interface ReportFormProps {
   userId: string
 }
@@ -36,12 +51,28 @@ export function ReportForm({ userId }: ReportFormProps) {
   const [formData, setFormData] = useState({
     incidentDate: "",
     bullyingType: "",
+    incidentLocation: "",
+    otherLocation: "",
     details: "",
   })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
-    setFiles((prev) => [...prev, ...selectedFiles].slice(0, 5)) // Max 5 files
+    const oversizedFiles = selectedFiles.filter((file) => file.size > MAX_FILE_SIZE_BYTES)
+
+    if (oversizedFiles.length > 0) {
+      setError("Each file must be 25MB or smaller.")
+      return
+    }
+
+    setError("")
+    setFiles((prev) => {
+      const nextFiles = [...prev, ...selectedFiles].slice(0, MAX_FILES)
+      if (prev.length + selectedFiles.length > MAX_FILES) {
+        setError(`You can upload up to ${MAX_FILES} files only.`)
+      }
+      return nextFiles
+    })
   }
 
   const removeFile = (index: number) => {
@@ -51,6 +82,30 @@ export function ReportForm({ userId }: ReportFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+
+    if (files.length > MAX_FILES) {
+      setError(`You can upload up to ${MAX_FILES} files only.`)
+      return
+    }
+
+    if (files.some((file) => file.size > MAX_FILE_SIZE_BYTES)) {
+      setError("Each file must be 25MB or smaller.")
+      return
+    }
+
+    if (!formData.incidentLocation) {
+      setError("Please select where the incident happened.")
+      return
+    }
+
+    if (
+      (formData.incidentLocation === "others" || formData.incidentLocation === "outside_campus") &&
+      !formData.otherLocation.trim()
+    ) {
+      setError("Please specify where the incident happened.")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -78,11 +133,17 @@ export function ReportForm({ userId }: ReportFormProps) {
       }
 
     
+      const locationLabel =
+        formData.incidentLocation === "others" || formData.incidentLocation === "outside_campus"
+          ? formData.otherLocation.trim()
+          : incidentLocations.find((location) => location.value === formData.incidentLocation)?.label ||
+            formData.incidentLocation
+
       const reportData = {
         user_id: userId,
         incident_date: formData.incidentDate,
         bullying_type: formData.bullyingType,
-        details: formData.details,
+        details: `Location: ${locationLabel}\n\n${formData.details}`,
         attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
         status: "pending",
       }
@@ -109,14 +170,14 @@ export function ReportForm({ userId }: ReportFormProps) {
   if (success) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-md border-0 shadow-lg">
-          <CardContent className="p-8 text-center space-y-4">
+        <Card className="w-full max-w-xl border-0 shadow-lg">
+          <CardContent className="p-6 sm:p-8 text-center space-y-4">
             <div className="flex justify-center">
               <div className="p-4 bg-green-100 rounded-full">
                 <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-foreground">Report Submitted</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Report Submitted</h2>
             <p className="text-muted-foreground">
               Thank you for speaking up. Your report has been submitted and will be reviewed by the guidance counselor.
             </p>
@@ -131,59 +192,96 @@ export function ReportForm({ userId }: ReportFormProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24">
-      <div className="max-w-md mx-auto space-y-4">
+    <div className="min-h-screen bg-background px-4 pb-24 pt-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <header className="flex items-center gap-4 pt-2">
           <Link href="/home" className="p-2 -ml-2 hover:bg-accent rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-xl font-bold text-foreground">Report an Incident</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Report an Incident</h1>
         </header>
 
         <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Incident Details</CardTitle>
+          <CardHeader className="pb-4 sm:pb-6">
+            <CardTitle className="text-lg sm:text-xl">Incident Details</CardTitle>
             <CardDescription>
               All information is confidential and will only be shared with the guidance counselor.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
 
-              <div className="space-y-2">
-                <Label htmlFor="incidentDate">Date of Incident *</Label>
-                <Input
-                  id="incidentDate"
-                  type="date"
-                  value={formData.incidentDate}
-                  onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                  required
-                  className="bg-input"
-                  max={new Date().toISOString().split("T")[0]}
-                />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="incidentDate">Date of Incident *</Label>
+                  <Input
+                    id="incidentDate"
+                    type="date"
+                    value={formData.incidentDate}
+                    onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                    required
+                    className="bg-input"
+                    max={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bullyingType">Type of Bullying *</Label>
+                  <Select
+                    value={formData.bullyingType}
+                    onValueChange={(value) => setFormData({ ...formData, bullyingType: value })}
+                    required
+                  >
+                    <SelectTrigger className="bg-input">
+                      <SelectValue placeholder="Select type of bullying" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bullyingTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bullyingType">Type of Bullying *</Label>
+                <Label htmlFor="incidentLocation">Where did it happen? *</Label>
                 <Select
-                  value={formData.bullyingType}
-                  onValueChange={(value) => setFormData({ ...formData, bullyingType: value })}
+                  value={formData.incidentLocation}
+                  onValueChange={(value) => setFormData({ ...formData, incidentLocation: value })}
                   required
                 >
                   <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="Select type of bullying" />
+                    <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {bullyingTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
+                    {incidentLocations.map((location) => (
+                      <SelectItem key={location.value} value={location.value}>
+                        {location.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {(formData.incidentLocation === "others" || formData.incidentLocation === "outside_campus") && (
+                <div className="space-y-2">
+                  <Label htmlFor="otherLocation">Please specify location *</Label>
+                  <Input
+                    id="otherLocation"
+                    type="text"
+                    placeholder="Enter location"
+                    value={formData.otherLocation}
+                    onChange={(e) => setFormData({ ...formData, otherLocation: e.target.value })}
+                    required
+                    className="bg-input"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="details">Details of the Incident *</Label>
@@ -214,11 +312,11 @@ export function ReportForm({ userId }: ReportFormProps) {
                     className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent/50 transition-colors"
                   >
                     <Upload className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Upload images or videos (max 5 files)</span>
+                    <span className="text-sm text-muted-foreground">Upload images or videos (max 10 files, 25MB each)</span>
                   </button>
 
                   {files.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {files.map((file, index) => (
                         <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                           {file.type.startsWith("image/") ? (
@@ -241,11 +339,19 @@ export function ReportForm({ userId }: ReportFormProps) {
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-2 sm:pt-4">
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || !formData.incidentDate || !formData.bullyingType || !formData.details}
+                  disabled={
+                    loading ||
+                    !formData.incidentDate ||
+                    !formData.bullyingType ||
+                    !formData.incidentLocation ||
+                    ((formData.incidentLocation === "others" || formData.incidentLocation === "outside_campus") &&
+                      !formData.otherLocation.trim()) ||
+                    !formData.details
+                  }
                 >
                   {loading ? (
                     <>
