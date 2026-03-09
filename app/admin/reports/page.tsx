@@ -89,12 +89,8 @@ export default function AdminReportsPage() {
               .filter((name): name is string => Boolean(name))
               .join(" ")
               .trim()
-          const lrn = profile?.lrn?.trim()
 
-          const reporterName =
-            fullName && lrn
-              ? `${fullName} (${lrn})`
-              : fullName || (lrn ? `LRN: ${lrn}` : report.reporter_name?.trim() || "Unknown Student")
+          const reporterName = fullName || report.reporter_name?.trim() || "Unknown Student"
 
           return {
             ...report,

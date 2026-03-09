@@ -3,12 +3,16 @@
 import { Menu, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { getInitials } from "@/lib/admin"
 
 interface AdminNavbarProps {
   onMenuClick: () => void
+  adminName: string
 }
 
-export function AdminNavbar({ onMenuClick }: AdminNavbarProps) {
+export function AdminNavbar({ onMenuClick, adminName }: AdminNavbarProps) {
+  const initials = getInitials(adminName) || "AD"
+
   return (
     <header className="sticky top-0 z-30 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700">
       <div className="flex items-center justify-between px-4 h-16">
@@ -23,10 +27,10 @@ export function AdminNavbar({ onMenuClick }: AdminNavbarProps) {
 
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8 bg-cyan-600">
-              <AvatarFallback className="bg-cyan-600 text-white text-sm">GC</AvatarFallback>
+              <AvatarFallback className="bg-cyan-600 text-white text-sm">{initials}</AvatarFallback>
             </Avatar>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-white">Guidance Counselor</p>
+              <p className="text-sm font-medium text-white">{adminName}</p>
               <p className="text-xs text-slate-400">Administrator</p>
             </div>
           </div>

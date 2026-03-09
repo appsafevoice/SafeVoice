@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
+import { isReservedAdminEmail } from "@/lib/admin"
 import { Eye, EyeOff, Upload, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 export function SignupForm() {
@@ -88,6 +89,11 @@ export function SignupForm() {
 
     if (formData.lrn.length !== 12) {
       setError("LRN must be 12 digits")
+      return
+    }
+
+    if (isReservedAdminEmail(formData.email)) {
+      setError("This email is reserved for the administrator account.")
       return
     }
 

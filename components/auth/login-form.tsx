@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
+import { isLegacyAdminEmail, isReservedAdminEmail, normalizeEmail } from "@/lib/admin"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export function LoginForm() {
@@ -30,15 +31,54 @@ export function LoginForm() {
 
     try {
       const supabase = createClient()
+      const normalizedEmail = normalizeEmail(formData.email)
 
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      let { data, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
 
+      if (authError && isReservedAdminEmail(normalizedEmail)) {
+        await fetch("/api/admin/bootstrap", {
+          method: "POST",
+        })
+
+        const retrySignIn = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        })
+        data = retrySignIn.data
+        authError = retrySignIn.error
+      }
+
       if (authError) throw authError
 
-      router.push("/home")
+      const userEmail = normalizeEmail(data.user?.email)
+      let isAdmin = false
+
+      if (userEmail) {
+        const { data: adminAccount, error: adminError } = await supabase
+          .from("admin_accounts")
+          .select("email")
+          .eq("email", userEmail)
+          .eq("is_active", true)
+          .maybeSingle()
+
+        if (!adminError) {
+          isAdmin = Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
+        } else if (adminError.code === "42P01") {
+          // Fallback while admin_accounts table is not yet created.
+          isAdmin = isLegacyAdminEmail(userEmail)
+        } else {
+          throw adminError
+        }
+      }
+
+      if (isAdmin) {
+        router.push("/admin/dashboard")
+      } else {
+        router.push("/home")
+      }
       router.refresh()
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Invalid email or password"

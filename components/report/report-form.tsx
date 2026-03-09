@@ -111,6 +111,21 @@ export function ReportForm({ userId }: ReportFormProps) {
     try {
       const supabase = createClient()
       const attachmentUrls: string[] = []
+      let reporterName: string | null = null
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", userId)
+        .maybeSingle()
+
+      const fullName = [profile?.first_name, profile?.last_name]
+        .filter((name): name is string => Boolean(name))
+        .join(" ")
+        .trim()
+      if (fullName) {
+        reporterName = fullName
+      }
 
       // File uploads require storage bucket to be configured
       if (files.length > 0) {
@@ -141,6 +156,7 @@ export function ReportForm({ userId }: ReportFormProps) {
 
       const reportData = {
         user_id: userId,
+        reporter_name: reporterName,
         incident_date: formData.incidentDate,
         bullying_type: formData.bullyingType,
         details: `Location: ${locationLabel}\n\n${formData.details}`,

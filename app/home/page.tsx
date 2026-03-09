@@ -4,6 +4,8 @@ import { Logo } from "@/components/ui/logo"
 import { ReportButton } from "@/components/home/report-button"
 import { AnnouncementsFeed } from "@/components/home/announcements-feed"
 import type { Announcement, Profile } from "@/lib/supabase/types"
+import { redirect } from "next/navigation"
+import { isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
 
 const defaultAnnouncements: Announcement[] = [
   {
@@ -45,6 +47,24 @@ export default async function HomePage() {
   let profile: Profile | null = null
 
   if (user) {
+    const userEmail = normalizeEmail(user.email)
+    const { data: adminAccount, error: adminError } = await supabase
+      .from("admin_accounts")
+      .select("email")
+      .eq("email", userEmail)
+      .eq("is_active", true)
+      .maybeSingle()
+
+    const isAdmin = !adminError
+      ? Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
+      : adminError.code === "42P01"
+        ? isLegacyAdminEmail(userEmail)
+        : false
+
+    if (isAdmin) {
+      redirect("/admin/dashboard")
+    }
+
     const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
     profile = data
   }

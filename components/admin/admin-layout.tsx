@@ -6,6 +6,8 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { AdminSidebar } from "./admin-sidebar"
 import { AdminNavbar } from "./admin-navbar"
+import { createBrowserClient } from "@/lib/supabase/client"
+import { ADMIN_NAME, isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -17,32 +19,58 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [adminName, setAdminName] = useState(ADMIN_NAME)
 
   useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = localStorage.getItem("adminAuthenticated")
-      const loginTime = localStorage.getItem("adminLoginTime")
+    const checkAuth = async () => {
+      const supabase = createBrowserClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      // Session expires after 24 hours
-      if (authenticated && loginTime) {
-        const elapsed = Date.now() - Number.parseInt(loginTime)
-        const twentyFourHours = 24 * 60 * 60 * 1000
-
-        if (elapsed < twentyFourHours) {
-          setIsAuthenticated(true)
-        } else {
-          localStorage.removeItem("adminAuthenticated")
-          localStorage.removeItem("adminLoginTime")
-          router.push("/admin/login")
-        }
-      } else {
-        router.push("/admin/login")
+      if (!user) {
+        router.push("/login")
+        setIsLoading(false)
+        return
       }
+
+      const userEmail = normalizeEmail(user.email)
+      const { data: adminAccount, error: adminError } = await supabase
+        .from("admin_accounts")
+        .select("full_name, is_active")
+        .eq("email", userEmail)
+        .eq("is_active", true)
+        .maybeSingle()
+
+      let isAdmin = false
+      let adminDisplayName = user.user_metadata?.full_name?.trim() || ADMIN_NAME
+
+      if (!adminError) {
+        isAdmin = Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
+        if (adminAccount?.full_name?.trim()) {
+          adminDisplayName = adminAccount.full_name.trim()
+        }
+      } else if (adminError.code === "42P01") {
+        isAdmin = isLegacyAdminEmail(userEmail)
+      } else {
+        router.push("/home")
+        setIsLoading(false)
+        return
+      }
+
+      if (!isAdmin) {
+        router.push("/home")
+        setIsLoading(false)
+        return
+      }
+
+      setAdminName(adminDisplayName)
+      setIsAuthenticated(true)
       setIsLoading(false)
     }
 
     checkAuth()
-  }, [router, pathname])
+  }, [pathname, router])
 
   if (isLoading) {
     return (
@@ -60,7 +88,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen bg-slate-900">
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="lg:pl-64">
-        <AdminNavbar onMenuClick={() => setSidebarOpen(true)} />
+        <AdminNavbar onMenuClick={() => setSidebarOpen(true)} adminName={adminName} />
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Home, FileText, BarChart3, Upload, LogOut, X, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 interface AdminSidebarProps {
   open: boolean
@@ -21,11 +22,11 @@ const navItems = [
 export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const supabase = createBrowserClient()
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuthenticated")
-    localStorage.removeItem("adminLoginTime")
-    router.push("/admin/login")
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
   }
 
   return (

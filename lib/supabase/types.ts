@@ -27,6 +27,7 @@ export interface ReportComment {
   report_id: string
   author_id?: string
   author_role: "student" | "admin"
+  author_name?: string | null
   content: string
   created_at: string
 }
