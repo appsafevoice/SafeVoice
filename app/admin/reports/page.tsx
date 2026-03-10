@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
+import { markAdminReportAsRead } from "@/lib/admin/report-notifications"
 import { Search, Eye, Calendar, User, FileText, Printer } from "lucide-react"
 
 
@@ -28,6 +29,8 @@ interface Report {
 }
 
 export default function AdminReportsPage() {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [reports, setReports] = useState<Report[]>([])
   const [filteredReports, setFilteredReports] = useState<Report[]>([])
@@ -39,7 +42,13 @@ export default function AdminReportsPage() {
   const [endDateFilter, setEndDateFilter] = useState("")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
+  const openedReportIdFromQuery = useRef<string | null>(null)
   const supabase = createBrowserClient()
+
+  useEffect(() => {
+    if (!selectedReport) return
+    markAdminReportAsRead(selectedReport.id, selectedReport.created_at)
+  }, [selectedReport])
 
   useEffect(() => {
     const statusFromQuery = searchParams.get("status")
@@ -48,6 +57,71 @@ export default function AdminReportsPage() {
       setStatusFilter(statusFromQuery)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    const reportIdFromQuery = searchParams.get("reportId")
+    if (!reportIdFromQuery) {
+      openedReportIdFromQuery.current = null
+      return
+    }
+    if (openedReportIdFromQuery.current === reportIdFromQuery) return
+
+    const openReport = async () => {
+      const existingReport = reports.find((r) => r.id === reportIdFromQuery)
+      if (existingReport) {
+        setSelectedReport(existingReport)
+        openedReportIdFromQuery.current = reportIdFromQuery
+        return
+      }
+
+      const { data: fetchedReport } = await supabase
+        .from("reports")
+        .select("*")
+        .eq("id", reportIdFromQuery)
+        .maybeSingle()
+
+      if (!fetchedReport) return
+
+      let reporterName = fetchedReport.reporter_name?.trim() || "Unknown Student"
+
+      if (fetchedReport.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, first_name, last_name, lrn")
+          .eq("id", fetchedReport.user_id)
+          .maybeSingle()
+
+        const fullName =
+          profile?.full_name?.trim() ||
+          [profile?.first_name, profile?.last_name]
+            .filter((name): name is string => Boolean(name))
+            .join(" ")
+            .trim()
+
+        reporterName = fullName || reporterName
+      }
+
+      const enrichedReport = {
+        ...fetchedReport,
+        reporter_name: reporterName,
+      } as Report
+
+      setReports((prev) => (prev.some((r) => r.id === enrichedReport.id) ? prev : [enrichedReport, ...prev]))
+      setSelectedReport(enrichedReport)
+      openedReportIdFromQuery.current = reportIdFromQuery
+    }
+
+    void openReport()
+  }, [reports, searchParams, supabase])
+
+  const clearReportIdFromUrl = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (!params.has("reportId")) return
+
+    params.delete("reportId")
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+  }
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -384,7 +458,15 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Report Detail Modal */}
-        <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+        <Dialog
+          open={!!selectedReport}
+          onOpenChange={(open) => {
+            if (open) return
+            setSelectedReport(null)
+            openedReportIdFromQuery.current = null
+            clearReportIdFromUrl()
+          }}
+        >
           <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:text-white">
             <DialogHeader>
               <DialogTitle className="text-white flex items-center gap-2">

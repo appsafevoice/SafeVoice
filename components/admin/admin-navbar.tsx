@@ -1,9 +1,9 @@
 "use client"
 
-import { Menu, Bell } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Menu } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { getInitials } from "@/lib/admin"
+import { AdminReportsNotificationsBell } from "./admin-reports-notifications-bell"
 
 interface AdminNavbarProps {
   onMenuClick: () => void
@@ -21,9 +21,7 @@ export function AdminNavbar({ onMenuClick, adminName }: AdminNavbarProps) {
         </button>
 
         <div className="flex items-center gap-4 ml-auto">
-          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
-            <Bell className="w-5 h-5" />
-          </Button>
+          <AdminReportsNotificationsBell />
 
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8 bg-cyan-600">

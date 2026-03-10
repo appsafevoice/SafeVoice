@@ -2,7 +2,8 @@
 
 import React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,11 @@ interface Announcement {
 }
 
 export default function AdminContentPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const highlightHandledRef = useRef<string | null>(null)
+  const [highlightedAnnouncementId, setHighlightedAnnouncementId] = useState<string | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -66,6 +72,29 @@ export default function AdminContentPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const announcementId = searchParams.get("announcementId")
+    if (!announcementId) return
+
+    const element = document.getElementById(`announcement-${announcementId}`)
+    if (!element) return
+
+    if (highlightHandledRef.current === announcementId) return
+    highlightHandledRef.current = announcementId
+
+    element.scrollIntoView({ behavior: "smooth", block: "center" })
+    setHighlightedAnnouncementId(announcementId)
+
+    const timeout = window.setTimeout(() => setHighlightedAnnouncementId(null), 2000)
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("announcementId")
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+
+    return () => window.clearTimeout(timeout)
+  }, [announcements, pathname, router, searchParams])
 
   const fetchAnnouncements = async () => {
     const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
@@ -270,11 +299,11 @@ export default function AdminContentPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-200">Content</Label>
+                  <Label className="text-slate-200">Description</Label>
                   <Textarea
                     value={content}
-                    onChange={(e) => setContent(e.target.   value)}
-                    placeholder={type === "quote" ? "Enter your motivational quote..." : "Enter content details..."}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={type === "quote" ? "Enter your motivational quote (optional)..." : "Enter description (optional)..."}
                     className="bg-slate-700/50 border-slate-600 text-white min-h-24"
                   />
                 </div>
@@ -328,7 +357,7 @@ export default function AdminContentPage() {
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={!title || !content || isSaving || isUploading}
+                    disabled={!title || isSaving || isUploading}
                     className="flex-1 bg-cyan-600 hover:bg-cyan-700"
                   >
                     {isUploading ? "Uploading..." : isSaving ? "Saving..." : "Save"}
@@ -373,8 +402,9 @@ export default function AdminContentPage() {
               const TypeIcon = getTypeIcon(announcement.type)
               return (
                 <Card
+                  id={`announcement-${announcement.id}`}
                   key={announcement.id}
-                  className={`bg-slate-800/50 border-slate-700 ${!announcement.is_active ? "opacity-60" : ""}`}
+                  className={`bg-slate-800/50 border-slate-700 ${!announcement.is_active ? "opacity-60" : ""} ${highlightedAnnouncementId === announcement.id ? "ring-2 ring-cyan-400" : ""}`}
                 >
                   {announcement.image_url && (
                     <div className="aspect-video relative overflow-hidden rounded-t-lg">

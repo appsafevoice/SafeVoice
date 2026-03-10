@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -48,6 +49,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased min-h-screen`}>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>
