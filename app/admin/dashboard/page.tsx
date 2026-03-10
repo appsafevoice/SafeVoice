@@ -5,6 +5,7 @@ import Link from "next/link"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
   XAxis,
@@ -43,6 +44,15 @@ const COLORS = ["#06b6d4", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e"]
 export default function AdminDashboardPage() {
   const [reports, setReports] = useState<Report[]>([])
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [categoryStart, setCategoryStart] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 29)
+    return date.toISOString().split("T")[0]
+  })
+  const [categoryEnd, setCategoryEnd] = useState(() => {
+    const date = new Date()
+    return date.toISOString().split("T")[0]
+  })
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
 
@@ -66,15 +76,32 @@ export default function AdminDashboardPage() {
   }, [supabase])
 
   // Process data for charts
-  const bullyingTypeData = reports.reduce((acc: { name: string; value: number }[], report) => {
-    const existing = acc.find((item) => item.name === report.bullying_type)
-    if (existing) {
-      existing.value++
-    } else {
-      acc.push({ name: report.bullying_type || "Unknown", value: 1 })
-    }
-    return acc
-  }, [])
+  const { bullyingTypeData, isCategoryRangeValid } = (() => {
+    const empty = { bullyingTypeData: [] as { name: string; value: number }[], isCategoryRangeValid: false }
+    if (!categoryStart || !categoryEnd) return empty
+
+    const startDate = new Date(categoryStart)
+    const endDate = new Date(categoryEnd)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return empty
+
+    const filteredReports = reports.filter((r) => {
+      const reportDate = r.created_at?.split("T")[0]
+      if (!reportDate) return false
+      return reportDate >= categoryStart && reportDate <= categoryEnd
+    })
+
+    const data = filteredReports.reduce((acc: { name: string; value: number }[], report) => {
+      const existing = acc.find((item) => item.name === report.bullying_type)
+      if (existing) {
+        existing.value++
+      } else {
+        acc.push({ name: report.bullying_type || "Unknown", value: 1 })
+      }
+      return acc
+    }, [])
+
+    return { bullyingTypeData: data, isCategoryRangeValid: true }
+  })()
 
   const statusData = reports.reduce((acc: { name: string; value: number }[], report) => {
     const existing = acc.find((item) => item.name === report.status)
@@ -202,13 +229,31 @@ export default function AdminDashboardPage() {
 
           {/* Bullying Type Distribution */}
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Bullying Type Distribution</CardTitle>
-              <CardDescription className="text-slate-400">Breakdown by incident category</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-white">Bullying Type Distribution</CardTitle>
+                <CardDescription className="text-slate-400">Breakdown by incident category between selected dates</CardDescription>
+              </div>
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="date"
+                  value={categoryStart}
+                  onChange={(e) => setCategoryStart(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+                <Input
+                  type="date"
+                  value={categoryEnd}
+                  onChange={(e) => setCategoryEnd(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {bullyingTypeData.length > 0 ? (
+                {!isCategoryRangeValid ? (
+                  <div className="h-full flex items-center justify-center text-slate-500">Select a valid date range</div>
+                ) : bullyingTypeData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -239,7 +284,9 @@ export default function AdminDashboardPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">No data available</div>
+                  <div className="h-full flex items-center justify-center text-slate-500">
+                    No data available for selected date range
+                  </div>
                 )}
               </div>
             </CardContent>

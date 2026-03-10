@@ -120,7 +120,7 @@ export default function AdminReportsPage() {
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((r) => r.status === statusFilter)
+      filtered = filtered.filter((r) => (r.status || "pending") === statusFilter)
     }
 
     if (typeFilter !== "all") {

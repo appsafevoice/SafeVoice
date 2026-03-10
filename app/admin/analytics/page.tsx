@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -52,6 +53,15 @@ export default function AdminAnalyticsPage() {
     const date = new Date()
     return date.toISOString().split("T")[0]
   })
+  const [typeDistStart, setTypeDistStart] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 29)
+    return date.toISOString().split("T")[0]
+  })
+  const [typeDistEnd, setTypeDistEnd] = useState(() => {
+    const date = new Date()
+    return date.toISOString().split("T")[0]
+  })
   const [typeTrendStart, setTypeTrendStart] = useState(() => {
     const date = new Date()
     date.setMonth(date.getMonth() - 5)
@@ -76,16 +86,33 @@ export default function AdminAnalyticsPage() {
     fetchReports()
   }, [supabase])
 
-  // Bullying type distribution
-  const typeData = reports.reduce((acc: { name: string; value: number }[], report) => {
-    const existing = acc.find((item) => item.name === report.bullying_type)
-    if (existing) {
-      existing.value++
-    } else if (report.bullying_type) {
-      acc.push({ name: report.bullying_type, value: 1 })
-    }
-    return acc
-  }, [])
+  // Bullying type distribution (selectable date range)
+  const { typeData, isTypeDistRangeValid } = (() => {
+    const empty = { typeData: [] as { name: string; value: number }[], isTypeDistRangeValid: false }
+    if (!typeDistStart || !typeDistEnd) return empty
+
+    const startDate = new Date(typeDistStart)
+    const endDate = new Date(typeDistEnd)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return empty
+
+    const filteredReports = reports.filter((r) => {
+      const reportDate = r.created_at?.split("T")[0]
+      if (!reportDate) return false
+      return reportDate >= typeDistStart && reportDate <= typeDistEnd
+    })
+
+    const data = filteredReports.reduce((acc: { name: string; value: number }[], report) => {
+      const existing = acc.find((item) => item.name === report.bullying_type)
+      if (existing) {
+        existing.value++
+      } else if (report.bullying_type) {
+        acc.push({ name: report.bullying_type, value: 1 })
+      }
+      return acc
+    }, [])
+
+    return { typeData: data, isTypeDistRangeValid: true }
+  })()
 
   // Monthly trend (selectable range)
   const monthlyData = (() => {
@@ -214,36 +241,44 @@ export default function AdminAnalyticsPage() {
         </div>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-cyan-400">{reports.length}</p>
-              <p className="text-sm text-slate-400">Total Reports</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-amber-400">
-                {reports.filter((r) => r.status === "pending" || !r.status).length}
-              </p>
-              <p className="text-sm text-slate-400">Pending</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-purple-400">
-                {reports.filter((r) => r.status === "in_progress").length}
-              </p>
-              <p className="text-sm text-slate-400">In Progress</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-green-400">
-                {reports.filter((r) => r.status === "resolved").length}
-              </p>
-              <p className="text-sm text-slate-400">Resolved</p>
-            </CardContent>
-          </Card>
+          <Link href="/admin/reports?status=all" className="block">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-cyan-500/50 transition-colors cursor-pointer">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-cyan-400">{reports.length}</p>
+                <p className="text-sm text-slate-400">Total Reports</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/reports?status=pending" className="block">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-amber-400">
+                  {reports.filter((r) => r.status === "pending" || !r.status).length}
+                </p>
+                <p className="text-sm text-slate-400">Pending</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/reports?status=in_progress" className="block">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-purple-400">
+                  {reports.filter((r) => r.status === "in_progress").length}
+                </p>
+                <p className="text-sm text-slate-400">In Progress</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/reports?status=resolved" className="block">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-green-500/50 transition-colors cursor-pointer">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-green-400">
+                  {reports.filter((r) => r.status === "resolved").length}
+                </p>
+                <p className="text-sm text-slate-400">Resolved</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Charts Grid */}
@@ -315,13 +350,31 @@ export default function AdminAnalyticsPage() {
 
           {/* Bullying Type Pie Chart */}
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white">Incident Categories</CardTitle>
-              <CardDescription className="text-slate-400">Distribution by bullying type</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-white">Incident Categories</CardTitle>
+                <CardDescription className="text-slate-400">Distribution by bullying type between selected dates</CardDescription>
+              </div>
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="date"
+                  value={typeDistStart}
+                  onChange={(e) => setTypeDistStart(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+                <Input
+                  type="date"
+                  value={typeDistEnd}
+                  onChange={(e) => setTypeDistEnd(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-72">
-                {typeData.length > 0 ? (
+                {!isTypeDistRangeValid ? (
+                  <div className="h-full flex items-center justify-center text-slate-500">Select a valid date range</div>
+                ) : typeData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -357,7 +410,9 @@ export default function AdminAnalyticsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">No data available</div>
+                  <div className="h-full flex items-center justify-center text-slate-500">
+                    No data available for selected date range
+                  </div>
                 )}
               </div>
             </CardContent>
