@@ -1,7 +1,3 @@
-import dynamic from "next/dynamic"
+"use client"
 
-const AdminContentClient = dynamic(() => import("./content-client"), { ssr: false })
-
-export default function AdminContentPage() {
-  return <AdminContentClient />
-}
+export { default } from "./content-client"

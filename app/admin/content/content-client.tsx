@@ -46,7 +46,14 @@ export default function AdminContentClient() {
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
-  const supabase = createBrowserClient()
+  const supabaseRef = useRef<ReturnType<typeof createBrowserClient> | null>(null)
+
+  const getSupabase = () => {
+    if (!supabaseRef.current) {
+      supabaseRef.current = createBrowserClient()
+    }
+    return supabaseRef.current
+  }
 
   // Form state
   const [title, setTitle] = useState("")
@@ -60,6 +67,7 @@ export default function AdminContentClient() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
+    const supabase = getSupabase()
     fetchAnnouncements()
     const channel = supabase
       .channel("admin-content-realtime")
@@ -97,6 +105,7 @@ export default function AdminContentClient() {
   }, [announcements, pathname, router, searchParams])
 
   const fetchAnnouncements = async () => {
+    const supabase = getSupabase()
     const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
 
     if (data) {
@@ -161,6 +170,7 @@ export default function AdminContentClient() {
   }
 
   const uploadImage = async (file: File): Promise<string | null> => {
+    const supabase = getSupabase()
     const fileExt = file.name.split(".").pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
     const filePath = `announcements/${fileName}`
@@ -180,6 +190,7 @@ export default function AdminContentClient() {
     setIsSaving(true)
     setErrorMessage("")
 
+    const supabase = getSupabase()
     let finalImageUrl = imageUrl
 
     // Upload new image if selected
@@ -233,6 +244,7 @@ export default function AdminContentClient() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this content?")) return
 
+    const supabase = getSupabase()
     const { error } = await supabase.from("announcements").delete().eq("id", id)
 
     if (!error) {
@@ -243,6 +255,7 @@ export default function AdminContentClient() {
   }
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
+    const supabase = getSupabase()
     const { error } = await supabase.from("announcements").update({ is_active: !currentStatus }).eq("id", id)
 
     if (!error) {
