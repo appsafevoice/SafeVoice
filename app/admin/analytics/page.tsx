@@ -4,9 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { Printer } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -30,6 +34,16 @@ interface Report {
   created_at: string
   incident_date: string
 }
+
+type ExportSectionKey =
+  | "summary"
+  | "monthlyTrend"
+  | "typeDistribution"
+  | "dailyActivity"
+  | "typeOverTime"
+  | "descriptiveAnalysis"
+
+type ExportSectionsState = Record<ExportSectionKey, boolean>
 
 const COLORS = ["#06b6d4", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e", "#ec4899"]
 
@@ -72,6 +86,24 @@ export default function AdminAnalyticsPage() {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
   })
   const [selectedTypeTrend, setSelectedTypeTrend] = useState("all")
+  const [exportStart, setExportStart] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 13)
+    return date.toISOString().split("T")[0]
+  })
+  const [exportEnd, setExportEnd] = useState(() => {
+    const date = new Date()
+    return date.toISOString().split("T")[0]
+  })
+  const [exportSections, setExportSections] = useState<ExportSectionsState>(() => ({
+    summary: true,
+    monthlyTrend: true,
+    typeDistribution: true,
+    dailyActivity: true,
+    typeOverTime: true,
+    descriptiveAnalysis: true,
+  }))
+  const [isExporting, setIsExporting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
 
@@ -85,6 +117,21 @@ export default function AdminAnalyticsPage() {
 
     fetchReports()
   }, [supabase])
+
+  const escapeHtml = (text: string) =>
+    text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;")
+
+  const normalizeStatus = (status?: string | null) => status || "pending"
+
+  const handleExportSectionChange =
+    (key: ExportSectionKey) => (checked: boolean | "indeterminate") => {
+      setExportSections((prev) => ({ ...prev, [key]: checked === true }))
+    }
 
   // Bullying type distribution (selectable date range)
   const { typeData, isTypeDistRangeValid } = (() => {
@@ -172,7 +219,9 @@ export default function AdminAnalyticsPage() {
     return rows
   })()
 
-  const allTypes = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
+  const allTypes = [
+    ...new Set(reports.map((r) => r.bullying_type).filter((type): type is string => Boolean(type))),
+  ]
 
   // Type by month for stacked chart with date range + type filter
   const typeByMonth = (() => {
@@ -220,6 +269,354 @@ export default function AdminAnalyticsPage() {
   })()
 
   const visibleTypeKeys = selectedTypeTrend === "all" ? allTypes : [selectedTypeTrend]
+
+  const { exportReports, exportRangeLabel, isExportRangeValid, exportDayCount } = (() => {
+    const empty = {
+      exportReports: [] as Report[],
+      exportRangeLabel: "",
+      isExportRangeValid: false,
+      exportDayCount: 0,
+    }
+    if (!exportStart || !exportEnd) return empty
+
+    const startDate = new Date(exportStart)
+    const endDate = new Date(exportEnd)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return empty
+
+    const startLabel = startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    const endLabel = endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    const msPerDay = 1000 * 60 * 60 * 24
+    const dayCount = Math.floor((endDate.getTime() - startDate.getTime()) / msPerDay) + 1
+
+    const filtered = reports.filter((report) => {
+      const reportDate = report.created_at?.split("T")[0]
+      if (!reportDate) return false
+      return reportDate >= exportStart && reportDate <= exportEnd
+    })
+
+    return {
+      exportReports: filtered,
+      exportRangeLabel: `${startLabel} - ${endLabel}`,
+      isExportRangeValid: true,
+      exportDayCount: dayCount,
+    }
+  })()
+
+  const exportSummary = exportReports.reduce(
+    (acc, report) => {
+      const status = normalizeStatus(report.status)
+      acc.total += 1
+      if (status === "resolved") acc.resolved += 1
+      else if (status === "in_progress") acc.inProgress += 1
+      else acc.pending += 1
+      return acc
+    },
+    { total: 0, pending: 0, inProgress: 0, resolved: 0 },
+  )
+
+  const exportTypeDistribution = (() => {
+    const data = exportReports.reduce((acc: { name: string; value: number }[], report) => {
+      const existing = acc.find((item) => item.name === report.bullying_type)
+      if (existing) {
+        existing.value += 1
+      } else if (report.bullying_type) {
+        acc.push({ name: report.bullying_type, value: 1 })
+      }
+      return acc
+    }, [])
+
+    return data.sort((a, b) => b.value - a.value)
+  })()
+
+  const exportMonthlyTrend = (() => {
+    if (!isExportRangeValid) return []
+
+    const startDate = new Date(exportStart)
+    const endDate = new Date(exportEnd)
+    const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
+
+    const rows: { month: string; reports: number }[] = []
+    const cursor = new Date(startMonth)
+
+    while (cursor <= endMonth && rows.length < 36) {
+      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
+      const yearLabel = cursor.getFullYear().toString().slice(-2)
+      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
+
+      const count = exportReports.filter((report) => {
+        const reportDate = new Date(report.created_at)
+        return reportDate >= monthStart && reportDate <= monthEnd
+      }).length
+
+      rows.push({ month: `${monthLabel} '${yearLabel}`, reports: count })
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+
+    return rows
+  })()
+
+  const exportDailyActivity = (() => {
+    if (!isExportRangeValid) return { rows: [] as { date: string; iso: string; reports: number }[], isTruncated: false }
+
+    const rows: { date: string; iso: string; reports: number }[] = []
+    const startDate = new Date(exportStart)
+    const endDate = new Date(exportEnd)
+    const cursor = new Date(startDate)
+    let isTruncated = false
+
+    while (cursor <= endDate) {
+      if (rows.length >= 120) {
+        isTruncated = true
+        break
+      }
+      const iso = cursor.toISOString().split("T")[0]
+      const count = exportReports.filter((report) => report.created_at.split("T")[0] === iso).length
+
+      rows.push({
+        iso,
+        date: cursor.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        reports: count,
+      })
+
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return { rows, isTruncated }
+  })()
+
+  const exportTypes = [
+    ...new Set(exportReports.map((report) => report.bullying_type).filter((type): type is string => Boolean(type))),
+  ]
+  const exportTypeKeys =
+    selectedTypeTrend === "all"
+      ? exportTypes
+      : [selectedTypeTrend].filter((type): type is string => Boolean(type))
+
+  const exportTypeOverTime = (() => {
+    if (!isExportRangeValid) return []
+    if (exportTypeKeys.length === 0) return []
+
+    const startDate = new Date(exportStart)
+    const endDate = new Date(exportEnd)
+    const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
+
+    const rows: { [key: string]: string | number }[] = []
+    const cursor = new Date(startMonth)
+
+    while (cursor <= endMonth && rows.length < 36) {
+      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
+      const yearLabel = cursor.getFullYear().toString().slice(-2)
+      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
+      const row: { [key: string]: string | number } = { month: `${monthLabel} '${yearLabel}` }
+
+      exportTypeKeys.forEach((type) => {
+        row[type] = exportReports.filter((report) => {
+          const reportDate = new Date(report.created_at)
+          return report.bullying_type === type && reportDate >= monthStart && reportDate <= monthEnd
+        }).length
+      })
+
+      rows.push(row)
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+
+    return rows
+  })()
+
+  const hasSelectedExportSections = Object.values(exportSections).some(Boolean)
+
+  const descriptiveAnalysis = (() => {
+    if (!isExportRangeValid) {
+      return ["Select a valid timeline to generate descriptive analysis."]
+    }
+
+    if (exportReports.length === 0) {
+      return ["No reports were submitted in the selected timeline."]
+    }
+
+    const insights: string[] = []
+    const avgPerDay = exportDayCount ? exportSummary.total / exportDayCount : exportSummary.total
+
+    insights.push(
+      `${exportSummary.total} reports recorded between ${exportRangeLabel} (avg ${avgPerDay.toFixed(1)} per day).`,
+    )
+
+    const topType = exportTypeDistribution[0]
+    if (topType) {
+      const share = exportSummary.total ? (topType.value / exportSummary.total) * 100 : 0
+      insights.push(`${topType.name} is the most common type (${topType.value} reports, ${share.toFixed(0)}%).`)
+    }
+
+    if (exportMonthlyTrend.length > 1) {
+      const first = exportMonthlyTrend[0]
+      const last = exportMonthlyTrend[exportMonthlyTrend.length - 1]
+      const delta = last.reports - first.reports
+      if (delta > 0) {
+        insights.push(`Monthly volume increased by ${delta} from ${first.month} to ${last.month}.`)
+      } else if (delta < 0) {
+        insights.push(`Monthly volume decreased by ${Math.abs(delta)} from ${first.month} to ${last.month}.`)
+      } else {
+        insights.push(`Monthly volume held steady at ${first.reports} from ${first.month} to ${last.month}.`)
+      }
+    }
+
+    const peakDay = exportDailyActivity.rows.reduce(
+      (max, row) => (row.reports > max.reports ? row : max),
+      { date: "", iso: "", reports: -1 },
+    )
+    if (peakDay.reports >= 0) {
+      insights.push(`Highest daily activity: ${peakDay.reports} reports on ${peakDay.date}.`)
+    }
+
+    const resolvedRate = exportSummary.total ? (exportSummary.resolved / exportSummary.total) * 100 : 0
+    const inProgressRate = exportSummary.total ? (exportSummary.inProgress / exportSummary.total) * 100 : 0
+    const pendingRate = exportSummary.total ? (exportSummary.pending / exportSummary.total) * 100 : 0
+    insights.push(
+      `Status mix: ${resolvedRate.toFixed(0)}% resolved, ${inProgressRate.toFixed(0)}% in progress, ${pendingRate.toFixed(0)}% pending.`,
+    )
+
+    return insights
+  })()
+
+  const handlePrintDataReport = async () => {
+    if (!isExportRangeValid || !hasSelectedExportSections) return
+
+    setIsExporting(true)
+
+    const summarySection = `
+      <h2>Summary Statistics</h2>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="label">Total Reports</div>
+          <div class="value">${exportSummary.total}</div>
+        </div>
+        <div class="summary-item">
+          <div class="label">Pending</div>
+          <div class="value">${exportSummary.pending}</div>
+        </div>
+        <div class="summary-item">
+          <div class="label">In Progress</div>
+          <div class="value">${exportSummary.inProgress}</div>
+        </div>
+        <div class="summary-item">
+          <div class="label">Resolved</div>
+          <div class="value">${exportSummary.resolved}</div>
+        </div>
+      </div>
+    `
+
+    const monthlyRows = exportMonthlyTrend
+      .map((row) => `<tr><td>${row.month}</td><td>${row.reports}</td></tr>`)
+      .join("")
+    const monthlySection = `
+      <h2>Monthly Trend</h2>
+      ${exportMonthlyTrend.length > 0 ? `<table><thead><tr><th>Month</th><th>Reports</th></tr></thead><tbody>${monthlyRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+    `
+
+    const typeRows = exportTypeDistribution
+      .map((row) => {
+        const share = exportSummary.total ? ((row.value / exportSummary.total) * 100).toFixed(0) : "0"
+        return `<tr><td>${escapeHtml(row.name)}</td><td>${row.value}</td><td>${share}%</td></tr>`
+      })
+      .join("")
+    const typeSection = `
+      <h2>Incident Categories</h2>
+      ${exportTypeDistribution.length > 0 ? `<table><thead><tr><th>Type</th><th>Reports</th><th>Share</th></tr></thead><tbody>${typeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+    `
+
+    const dailyRows = exportDailyActivity.rows
+      .map((row) => `<tr><td>${row.date}</td><td>${row.reports}</td></tr>`)
+      .join("")
+    const dailyNote = exportDailyActivity.isTruncated ? "<p class=\"muted\">Showing first 120 days.</p>" : ""
+    const dailySection = `
+      <h2>Daily Activity</h2>
+      ${exportDailyActivity.rows.length > 0 ? `<table><thead><tr><th>Date</th><th>Reports</th></tr></thead><tbody>${dailyRows}</tbody></table>${dailyNote}` : "<p class=\"muted\">No data for selected timeline.</p>"}
+    `
+
+    const typeOverTimeHeader = exportTypeKeys.map((type) => `<th>${escapeHtml(type)}</th>`).join("")
+    const typeOverTimeRows = exportTypeOverTime
+      .map((row) => {
+        const cells = exportTypeKeys.map((type) => `<td>${row[type] ?? 0}</td>`).join("")
+        return `<tr><td>${row.month}</td>${cells}</tr>`
+      })
+      .join("")
+    const typeOverTimeSection = `
+      <h2>Incident Types Over Time</h2>
+      ${exportTypeOverTime.length > 0 ? `<table><thead><tr><th>Month</th>${typeOverTimeHeader}</tr></thead><tbody>${typeOverTimeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+    `
+
+    const analysisItems = descriptiveAnalysis
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("")
+    const analysisSection = `
+      <h2>Descriptive Analysis</h2>
+      <ul>${analysisItems}</ul>
+    `
+
+    const sectionsHtml = [
+      exportSections.summary ? summarySection : "",
+      exportSections.monthlyTrend ? monthlySection : "",
+      exportSections.typeDistribution ? typeSection : "",
+      exportSections.dailyActivity ? dailySection : "",
+      exportSections.typeOverTime ? typeOverTimeSection : "",
+      exportSections.descriptiveAnalysis ? analysisSection : "",
+    ]
+      .filter(Boolean)
+      .join("")
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>SafeVoice Data Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #111; margin: 24px; line-height: 1.45; }
+            h1 { margin: 0 0 6px 0; font-size: 22px; }
+            h2 { margin: 24px 0 8px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+            .muted { color: #666; font-size: 12px; }
+            .meta { margin-bottom: 16px; font-size: 13px; color: #444; }
+            .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 8px; }
+            .summary-item { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fafafa; }
+            .summary-item .label { font-size: 12px; color: #666; }
+            .summary-item .value { font-size: 18px; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+            th { background: #f3f4f6; }
+            ul { padding-left: 20px; margin-top: 8px; }
+            li { margin-bottom: 6px; }
+            @media print { body { margin: 12mm; } a { color: #111; text-decoration: none; } }
+          </style>
+        </head>
+        <body>
+          <h1>SafeVoice Data Report</h1>
+          <div class="meta">
+            <div><strong>Timeline:</strong> ${escapeHtml(exportRangeLabel)}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          ${sectionsHtml}
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) {
+      setIsExporting(false)
+      return
+    }
+
+    printWindow.document.open()
+    printWindow.document.write(printHtml)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+
+    setIsExporting(false)
+  }
 
   if (isLoading) {
     return (
@@ -280,6 +677,135 @@ export default function AdminAnalyticsPage() {
             </Card>
           </Link>
         </div>
+
+        {/* Descriptive Analysis + Export */}
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Descriptive Analysis & Export</CardTitle>
+            <CardDescription className="text-slate-400">
+              Generate insights and export a PDF report for a selected timeline
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Timeline</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      value={exportStart}
+                      onChange={(e) => setExportStart(e.target.value)}
+                      className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                    />
+                    <Input
+                      type="date"
+                      value={exportEnd}
+                      onChange={(e) => setExportEnd(e.target.value)}
+                      className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-summary"
+                      checked={exportSections.summary}
+                      onCheckedChange={handleExportSectionChange("summary")}
+                    />
+                    <Label htmlFor="export-summary" className="text-slate-200">
+                      Summary stats
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-monthly"
+                      checked={exportSections.monthlyTrend}
+                      onCheckedChange={handleExportSectionChange("monthlyTrend")}
+                    />
+                    <Label htmlFor="export-monthly" className="text-slate-200">
+                      Monthly trend
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-type"
+                      checked={exportSections.typeDistribution}
+                      onCheckedChange={handleExportSectionChange("typeDistribution")}
+                    />
+                    <Label htmlFor="export-type" className="text-slate-200">
+                      Incident categories
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-daily"
+                      checked={exportSections.dailyActivity}
+                      onCheckedChange={handleExportSectionChange("dailyActivity")}
+                    />
+                    <Label htmlFor="export-daily" className="text-slate-200">
+                      Daily activity
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-type-over-time"
+                      checked={exportSections.typeOverTime}
+                      onCheckedChange={handleExportSectionChange("typeOverTime")}
+                    />
+                    <Label htmlFor="export-type-over-time" className="text-slate-200">
+                      Incident types over time
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="export-analysis"
+                      checked={exportSections.descriptiveAnalysis}
+                      onCheckedChange={handleExportSectionChange("descriptiveAnalysis")}
+                    />
+                    <Label htmlFor="export-analysis" className="text-slate-200">
+                      Descriptive analysis
+                    </Label>
+                  </div>
+                </div>
+
+                {!isExportRangeValid && (
+                  <p className="text-xs text-amber-300">Select a valid timeline to enable export.</p>
+                )}
+                {isExportRangeValid && !hasSelectedExportSections && (
+                  <p className="text-xs text-amber-300">Select at least one section to include.</p>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePrintDataReport}
+                  disabled={isExporting || !isExportRangeValid || !hasSelectedExportSections}
+                  className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  {isExporting ? "Preparing..." : "Print / Save PDF"}
+                </Button>
+              </div>
+
+              <div className="rounded-lg bg-slate-700/30 border border-slate-600 p-4">
+                <p className="text-xs text-slate-400 mb-2">
+                  Descriptive analysis {isExportRangeValid ? `(${exportRangeLabel})` : ""}
+                </p>
+                {descriptiveAnalysis.length > 0 ? (
+                  <ul className="list-disc list-inside text-sm text-slate-100 space-y-1">
+                    {descriptiveAnalysis.map((item, index) => (
+                      <li key={`${index}-${item}`}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-400">No analysis available.</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Charts Grid */}
         <div className="grid lg:grid-cols-2 gap-6">

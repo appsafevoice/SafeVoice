@@ -261,6 +261,64 @@ export default function AdminReportsPage() {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;")
 
+  const buildReportInsights = (report: Report) => {
+    const insights: string[] = []
+    const createdAt = new Date(report.created_at)
+    const statusLabel = report.status || "pending"
+
+    insights.push(`Submitted on ${createdAt.toLocaleString()} and currently marked as ${statusLabel}.`)
+
+    if (report.bullying_type) {
+      insights.push(`Categorized as ${report.bullying_type}.`)
+    }
+
+    if (report.incident_date) {
+      const incidentDate = new Date(report.incident_date)
+      if (!Number.isNaN(incidentDate.getTime())) {
+        const msPerDay = 1000 * 60 * 60 * 24
+        const reportDay = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate())
+        const incidentDay = new Date(incidentDate.getFullYear(), incidentDate.getMonth(), incidentDate.getDate())
+        const diffDays = Math.round((reportDay.getTime() - incidentDay.getTime()) / msPerDay)
+        if (diffDays === 0) {
+          insights.push("Incident date matches the submission day.")
+        } else if (diffDays > 0) {
+          insights.push(`Reported ${diffDays} day${diffDays === 1 ? "" : "s"} after the incident date.`)
+        } else {
+          insights.push(
+            `Incident date is ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? "" : "s"} after submission in the record.`,
+          )
+        }
+      }
+    } else {
+      insights.push("Incident date was not provided.")
+    }
+
+    const detailText = report.details?.trim() || ""
+    if (detailText) {
+      const wordCount = detailText.split(/\s+/).filter(Boolean).length
+      insights.push(`Incident details contain ${wordCount} word${wordCount === 1 ? "" : "s"}.`)
+    } else {
+      insights.push("No incident details were provided.")
+    }
+
+    const attachments = report.attachments || []
+    if (attachments.length > 0) {
+      const imageCount = attachments.filter((url) => isImageAttachment(url)).length
+      const videoCount = attachments.filter((url) => isVideoAttachment(url)).length
+      const otherCount = attachments.length - imageCount - videoCount
+      const parts: string[] = []
+      if (imageCount > 0) parts.push(`${imageCount} image${imageCount === 1 ? "" : "s"}`)
+      if (videoCount > 0) parts.push(`${videoCount} video${videoCount === 1 ? "" : "s"}`)
+      if (otherCount > 0) parts.push(`${otherCount} other file${otherCount === 1 ? "" : "s"}`)
+      const summary = parts.length > 0 ? parts.join(", ") : `${attachments.length} file${attachments.length === 1 ? "" : "s"}`
+      insights.push(`Attachments included: ${summary}.`)
+    } else {
+      insights.push("No attachments were included.")
+    }
+
+    return insights
+  }
+
   const handlePrintReport = async (report: Report) => {
     setIsPrinting(true)
 
@@ -341,6 +399,7 @@ export default function AdminReportsPage() {
   }
 
   const bullyingTypes = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
+  const reportInsights = selectedReport ? buildReportInsights(selectedReport) : []
 
   return (
     <AdminLayout>
@@ -533,6 +592,21 @@ export default function AdminReportsPage() {
                   <p className="text-xs text-slate-400 mb-1">Details</p>
                   <div className="p-3 bg-slate-700/30 rounded-lg">
                     <p className="text-sm text-white whitespace-pre-wrap">{selectedReport.details}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Descriptive Analysis</p>
+                  <div className="p-3 bg-slate-700/30 rounded-lg">
+                    {reportInsights.length > 0 ? (
+                      <ul className="list-disc list-inside text-sm text-slate-100 space-y-1">
+                        {reportInsights.map((item, index) => (
+                          <li key={`${index}-${item}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-400">No analysis available.</p>
+                    )}
                   </div>
                 </div>
 
