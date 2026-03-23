@@ -52,6 +52,9 @@ export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
 
       if (updateError) throw updateError
 
+      // Keep admin_accounts.password_hash in sync for admin users (best-effort).
+      await supabase.rpc("admin_accounts_set_own_password_hash", { p_new_password: formData.newPassword })
+
       setSuccess(true)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to change password"

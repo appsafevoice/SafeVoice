@@ -20,15 +20,15 @@ export default function SignupSuccessPage() {
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold">Check your email</CardTitle>
             <CardDescription>
-              We sent you a confirmation link. Please check your email to verify your account.
+              We sent you a 6-digit verification code. Enter it on the verification screen to activate your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Once verified, you can login and start using SafeVoice.
+              Once verified, you can log in and start using SafeVoice.
             </p>
-            <Link href="/login" className="text-primary hover:underline font-medium text-sm">
-              Back to Login
+            <Link href="/verify-email" className="text-primary hover:underline font-medium text-sm">
+              Go to Verification
             </Link>
           </CardContent>
         </Card>

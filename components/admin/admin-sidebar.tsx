@@ -3,26 +3,33 @@
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Home, FileText, BarChart3, Upload, LogOut, X, ShieldCheck } from "lucide-react"
+import { Home, FileText, BarChart3, Upload, UserCog, LogOut, X, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { getAdminRoleLabel, isSuperAdminEmail } from "@/lib/admin"
 
 interface AdminSidebarProps {
   open: boolean
   onClose: () => void
+  adminEmail: string | null
 }
 
-const navItems = [
+const baseNavItems = [
   { href: "/admin/dashboard", label: "Home", icon: Home },
   { href: "/admin/reports", label: "Report Details", icon: FileText },
   { href: "/admin/analytics", label: "Data Reports", icon: BarChart3 },
   { href: "/admin/content", label: "Content Manager", icon: Upload },
 ]
 
-export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
+export function AdminSidebar({ open, onClose, adminEmail }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient()
+  const isSuperAdmin = isSuperAdminEmail(adminEmail)
+  const roleLabel = getAdminRoleLabel(adminEmail)
+  const navItems = isSuperAdmin
+    ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Admin Management", icon: UserCog }]
+    : baseNavItems
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -50,7 +57,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
               </div>
               <div>
                 <h2 className="font-semibold text-white">SafeVoice</h2>
-                <p className="text-xs text-slate-400">Admin Portal</p>
+                <p className="text-xs text-slate-400">{roleLabel}</p>
               </div>
             </div>
             <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">

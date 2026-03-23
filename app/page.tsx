@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
+import { normalizeEmail } from "@/lib/admin"
 
 export default async function RootPage() {
   const supabase = await createClient()
@@ -17,11 +17,7 @@ export default async function RootPage() {
       .eq("is_active", true)
       .maybeSingle()
 
-    const isAdmin = !adminError
-      ? Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
-      : adminError.code === "42P01"
-        ? isLegacyAdminEmail(userEmail)
-        : false
+    const isAdmin = !adminError ? Boolean(adminAccount) : false
 
     redirect(isAdmin ? "/admin/dashboard" : "/home")
   } else {

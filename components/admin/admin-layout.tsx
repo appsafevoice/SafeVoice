@@ -7,19 +7,22 @@ import { useRouter, usePathname } from "next/navigation"
 import { AdminSidebar } from "./admin-sidebar"
 import { AdminNavbar } from "./admin-navbar"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { ADMIN_NAME, isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
+import { DEFAULT_ADMIN_NAME, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 
 interface AdminLayoutProps {
   children: React.ReactNode
+  requireSuperAdmin?: boolean
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [adminName, setAdminName] = useState(ADMIN_NAME)
+  const [adminName, setAdminName] = useState(DEFAULT_ADMIN_NAME)
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
+  const [adminPosition, setAdminPosition] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,23 +40,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       const userEmail = normalizeEmail(user.email)
       const { data: adminAccount, error: adminError } = await supabase
         .from("admin_accounts")
-        .select("full_name, is_active")
+        .select("full_name, position, is_active")
         .eq("email", userEmail)
         .eq("is_active", true)
         .maybeSingle()
 
       let isAdmin = false
-      let adminDisplayName = user.user_metadata?.full_name?.trim() || ADMIN_NAME
+      let adminDisplayName = user.user_metadata?.full_name?.trim() || DEFAULT_ADMIN_NAME
 
-      if (!adminError) {
-        isAdmin = Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
-        if (adminAccount?.full_name?.trim()) {
-          adminDisplayName = adminAccount.full_name.trim()
-        }
-      } else if (adminError.code === "42P01") {
-        isAdmin = isLegacyAdminEmail(userEmail)
-      } else {
+      if (adminError) {
         router.push("/home")
+        setIsLoading(false)
+        return
+      }
+
+      isAdmin = Boolean(adminAccount)
+      if (adminAccount?.full_name?.trim()) {
+        adminDisplayName = adminAccount.full_name.trim()
+      }
+
+      if (requireSuperAdmin && !isSuperAdminEmail(userEmail)) {
+        router.push("/admin/dashboard")
         setIsLoading(false)
         return
       }
@@ -65,12 +72,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       }
 
       setAdminName(adminDisplayName)
+      setAdminEmail(userEmail)
+      setAdminPosition(adminAccount?.position?.trim() || null)
       setIsAuthenticated(true)
       setIsLoading(false)
     }
 
     checkAuth()
-  }, [pathname, router])
+  }, [pathname, requireSuperAdmin, router])
 
   if (isLoading) {
     return (
@@ -86,9 +95,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} adminEmail={adminEmail} />
       <div className="lg:pl-64">
-        <AdminNavbar onMenuClick={() => setSidebarOpen(true)} adminName={adminName} />
+        <AdminNavbar
+          onMenuClick={() => setSidebarOpen(true)}
+          adminName={adminName}
+          adminEmail={adminEmail}
+          adminPosition={adminPosition}
+        />
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

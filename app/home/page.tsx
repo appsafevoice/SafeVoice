@@ -5,7 +5,7 @@ import { ReportButton } from "@/components/home/report-button"
 import { AnnouncementsFeed } from "@/components/home/announcements-feed"
 import type { Announcement, Profile } from "@/lib/supabase/types"
 import { redirect } from "next/navigation"
-import { isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
+import { normalizeEmail } from "@/lib/admin"
 
 const defaultAnnouncements: Announcement[] = [
   {
@@ -55,11 +55,7 @@ export default async function HomePage() {
       .eq("is_active", true)
       .maybeSingle()
 
-    const isAdmin = !adminError
-      ? Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
-      : adminError.code === "42P01"
-        ? isLegacyAdminEmail(userEmail)
-        : false
+    const isAdmin = !adminError ? Boolean(adminAccount) : false
 
     if (isAdmin) {
       redirect("/admin/dashboard")

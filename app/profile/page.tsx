@@ -16,14 +16,34 @@ export default async function ProfilePage() {
   let { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
   if (!profile) {
+    const firstName =
+      typeof user.user_metadata?.first_name === "string" && user.user_metadata.first_name.trim()
+        ? user.user_metadata.first_name.trim()
+        : typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
+          ? user.user_metadata.full_name.trim().split(/\s+/)[0] || ""
+          : ""
+    const lastName =
+      typeof user.user_metadata?.last_name === "string" && user.user_metadata.last_name.trim()
+        ? user.user_metadata.last_name.trim()
+        : typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim().includes(" ")
+          ? user.user_metadata.full_name.trim().split(/\s+/).slice(1).join(" ")
+          : ""
+    const lrn =
+      typeof user.user_metadata?.lrn === "string" && user.user_metadata.lrn.trim()
+        ? user.user_metadata.lrn.trim()
+        : typeof user.user_metadata?.student_id === "string" && user.user_metadata.student_id.trim()
+          ? user.user_metadata.student_id.trim()
+          : null
+
     // Create a default profile for the user
     const { data: newProfile, error } = await supabase
       .from("profiles")
       .insert({
         id: user.id,
         email: user.email,
-        full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
-        student_id: user.user_metadata?.student_id || null,
+        lrn,
+        first_name: firstName,
+        last_name: lastName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -36,8 +56,9 @@ export default async function ProfilePage() {
       profile = {
         id: user.id,
         email: user.email,
-        full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
-        student_id: null,
+        lrn: lrn || "",
+        first_name: firstName,
+        last_name: lastName,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }

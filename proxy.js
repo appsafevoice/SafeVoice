@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
-import { isLegacyAdminEmail, normalizeEmail } from "@/lib/admin"
+import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 import { supabaseUrl, supabaseAnonKey } from "@/lib/supabase/config"
 
 export async function proxy(request) {
@@ -33,6 +33,7 @@ export async function proxy(request) {
   const userEmail = normalizeEmail(user?.email)
 
   let userIsAdmin = false
+  let userIsSuperAdmin = false
   if (userEmail) {
     const { data: adminAccount, error: adminError } = await supabase
       .from("admin_accounts")
@@ -42,10 +43,8 @@ export async function proxy(request) {
       .maybeSingle()
 
     if (!adminError) {
-      userIsAdmin = Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
-    } else if (adminError.code === "42P01") {
-      // Fallback while admin_accounts table is not yet created.
-      userIsAdmin = isLegacyAdminEmail(userEmail)
+      userIsAdmin = Boolean(adminAccount)
+      userIsSuperAdmin = Boolean(adminAccount) && isSuperAdminEmail(userEmail)
     }
   }
 
@@ -53,6 +52,7 @@ export async function proxy(request) {
   const protectedRoutes = ["/home", "/report", "/profile"]
   const isProtectedRoute = protectedRoutes.some((route) => request.nextUrl.pathname.startsWith(route))
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin")
+  const isSuperAdminRoute = request.nextUrl.pathname.startsWith("/admin/admin-accounts")
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
@@ -72,10 +72,16 @@ export async function proxy(request) {
       url.pathname = "/home"
       return NextResponse.redirect(url)
     }
+
+    if (isSuperAdminRoute && !userIsSuperAdmin) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/admin/dashboard"
+      return NextResponse.redirect(url)
+    }
   }
 
   // Auth routes (redirect if logged in)
-  const authRoutes = ["/login", "/signup", "/forgot-password"]
+  const authRoutes = ["/login", "/signup", "/forgot-password", "/verify-email"]
   const isAuthRoute = authRoutes.some((route) => request.nextUrl.pathname.startsWith(route))
 
   if (isAuthRoute && user) {

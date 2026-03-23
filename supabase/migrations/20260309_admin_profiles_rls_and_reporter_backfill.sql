@@ -1,3 +1,17 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.admin_accounts (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null check (char_length(trim(full_name)) > 0),
+  email text not null check (char_length(trim(email)) > 0),
+  password_hash text not null check (char_length(trim(password_hash)) > 0),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists admin_accounts_email_lower_uniq
+  on public.admin_accounts (lower(email));
+
 drop policy if exists "Active admins can view all profiles" on public.profiles;
 
 create policy "Active admins can view all profiles"

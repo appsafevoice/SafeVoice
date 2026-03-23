@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
+import { normalizeEmail } from "@/lib/admin"
 import { createClient } from "@/lib/supabase/client"
-import { isReservedAdminEmail } from "@/lib/admin"
 import { Eye, EyeOff, Upload, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 export function SignupForm() {
@@ -257,32 +257,38 @@ export function SignupForm() {
       return
     }
 
-    if (isReservedAdminEmail(formData.email)) {
-      setError("This email is reserved for the administrator account.")
-      return
-    }
-
     setLoading(true)
 
     try {
       const supabase = createClient()
+      const normalizedEmail = normalizeEmail(formData.email)
+      const normalizedFirstName = formData.firstName.trim()
+      const normalizedLastName = formData.lastName.trim()
+      const fullName = [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ").trim()
 
-      const { error: authError } = await supabase.auth.signUp({
-        email: formData.email,
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
+        email: normalizedEmail,
         password: formData.password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/home`,
           data: {
             lrn: formData.lrn,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+            first_name: normalizedFirstName,
+            last_name: normalizedLastName,
+            full_name: fullName || normalizedEmail.split("@")[0] || "User",
+            student_id: formData.lrn,
           },
         },
       })
 
       if (authError) throw authError
 
-      router.push("/signup-success")
+      if (signUpData.session) {
+        router.push("/home")
+        router.refresh()
+        return
+      }
+
+      router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}&context=signup`)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred during signup"
       setError(errorMessage)

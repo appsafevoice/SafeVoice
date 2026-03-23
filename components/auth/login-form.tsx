@@ -11,14 +11,44 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
-import { isLegacyAdminEmail, isReservedAdminEmail, normalizeEmail } from "@/lib/admin"
+import { normalizeEmail } from "@/lib/admin"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
+
+type PendingAdminFirstLogin = {
+  full_name: string
+  position: string | null
+  email: string
+}
+
+function isEmailVerificationPendingError(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+  return normalizedMessage.includes("not confirmed") || normalizedMessage.includes("not verified")
+}
+
+function isInvalidCredentialsError(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+  return (
+    normalizedMessage.includes("invalid login credentials") ||
+    normalizedMessage.includes("invalid email or password") ||
+    normalizedMessage.includes("invalid credentials")
+  )
+}
+
+function isEmailRateLimitError(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+  return (
+    normalizedMessage.includes("rate limit") ||
+    normalizedMessage.includes("too many requests") ||
+    normalizedMessage.includes("email rate limit exceeded")
+  )
+}
 
 export function LoginForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("")
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,29 +57,17 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setPendingVerificationEmail("")
     setLoading(true)
 
     try {
       const supabase = createClient()
       const normalizedEmail = normalizeEmail(formData.email)
 
-      let { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
         password: formData.password,
       })
-
-      if (authError && isReservedAdminEmail(normalizedEmail)) {
-        await fetch("/api/admin/bootstrap", {
-          method: "POST",
-        })
-
-        const retrySignIn = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        })
-        data = retrySignIn.data
-        authError = retrySignIn.error
-      }
 
       if (authError) throw authError
 
@@ -64,13 +82,12 @@ export function LoginForm() {
           .eq("is_active", true)
           .maybeSingle()
 
-        if (!adminError) {
-          isAdmin = Boolean(adminAccount) || isLegacyAdminEmail(userEmail)
-        } else if (adminError.code === "42P01") {
-          // Fallback while admin_accounts table is not yet created.
-          isAdmin = isLegacyAdminEmail(userEmail)
+        if (adminError) {
+          if (adminError.code !== "42P01") {
+            throw adminError
+          }
         } else {
-          throw adminError
+          isAdmin = Boolean(adminAccount)
         }
       }
 
@@ -82,7 +99,67 @@ export function LoginForm() {
       router.refresh()
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Invalid email or password"
-      setError(errorMessage)
+      if (isEmailVerificationPendingError(errorMessage)) {
+        setPendingVerificationEmail(normalizeEmail(formData.email))
+        setError("Email not verified yet. Enter the 6-digit code sent to your email to continue.")
+      } else if (isInvalidCredentialsError(errorMessage)) {
+        const supabase = createClient()
+        const normalizedEmail = normalizeEmail(formData.email)
+        const { data: pendingAdminRows, error: pendingAdminError } = await supabase.rpc(
+          "admin_accounts_prepare_first_login",
+          {
+            p_email: normalizedEmail,
+            p_password: formData.password,
+          },
+        )
+
+        if (pendingAdminError) {
+          if (pendingAdminError.code === "42883") {
+            setError("Admin first-login setup is missing. Run the latest Supabase migrations and try again.")
+          } else {
+            setError(pendingAdminError.message || "Unable to prepare the admin login.")
+          }
+        } else {
+          const pendingAdmin = Array.isArray(pendingAdminRows)
+            ? (pendingAdminRows[0] as PendingAdminFirstLogin | undefined)
+            : undefined
+
+          if (!pendingAdmin) {
+            setError(errorMessage)
+          } else {
+            const fullName = pendingAdmin.full_name?.trim() || normalizedEmail.split("@")[0] || "Admin"
+            const [firstName, ...lastNameParts] = fullName.split(/\s+/)
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: normalizedEmail,
+              password: formData.password,
+              options: {
+                data: {
+                  full_name: fullName,
+                  first_name: firstName || fullName,
+                  last_name: lastNameParts.join(" "),
+                  position: pendingAdmin.position || "",
+                  role: "admin",
+                },
+              },
+            })
+
+            if (signUpError) {
+              if (isEmailRateLimitError(signUpError.message)) {
+                setError("Email rate limit exceeded. Wait a bit, then try logging in again.")
+              } else {
+                setError(signUpError.message || "Failed to start admin email verification.")
+              }
+            } else if (signUpData.session) {
+              router.push("/admin/dashboard")
+              router.refresh()
+            } else {
+              router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}&context=admin`)
+            }
+          }
+        }
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setLoading(false)
     }
@@ -103,6 +180,16 @@ export function LoginForm() {
           <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">{error}</div>}
+              {pendingVerificationEmail && (
+                <div className="p-3 text-sm text-primary bg-primary/10 rounded-lg">
+                  <Link
+                    href={`/verify-email?email=${encodeURIComponent(pendingVerificationEmail)}&context=signup`}
+                    className="font-medium hover:underline"
+                  >
+                    Verify this email with your 6-digit code
+                  </Link>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
