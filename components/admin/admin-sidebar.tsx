@@ -12,6 +12,7 @@ interface AdminSidebarProps {
   open: boolean
   onClose: () => void
   adminEmail: string | null
+  adminPosition?: string | null
 }
 
 const baseNavItems = [
@@ -21,12 +22,12 @@ const baseNavItems = [
   { href: "/admin/content", label: "Content Manager", icon: Upload },
 ]
 
-export function AdminSidebar({ open, onClose, adminEmail }: AdminSidebarProps) {
+export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient()
   const isSuperAdmin = isSuperAdminEmail(adminEmail)
-  const roleLabel = getAdminRoleLabel(adminEmail)
+  const roleLabel = adminPosition?.trim() || getAdminRoleLabel(adminEmail)
   const navItems = isSuperAdmin
     ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Admin Management", icon: UserCog }]
     : baseNavItems

@@ -95,7 +95,12 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} adminEmail={adminEmail} />
+      <AdminSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        adminEmail={adminEmail}
+        adminPosition={adminPosition}
+      />
       <div className="lg:pl-64">
         <AdminNavbar
           onMenuClick={() => setSidebarOpen(true)}
