@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
+import { SUPER_ADMIN_EMAIL, getAdminPositionLabel, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -414,6 +414,7 @@ export function AdminAccountsManager() {
               const accountIsSuperAdmin = isSuperAdminEmail(account.email)
               const isCurrentUser = currentUserEmail ? normalizeEmail(account.email) === currentUserEmail : false
               const isProcessing = processingAccountId === account.id
+              const positionLabel = getAdminPositionLabel(account.position, account.email)
 
               return (
                 <div
@@ -437,7 +438,9 @@ export function AdminAccountsManager() {
                       )}
                       {!account.is_active && <span className="text-xs text-slate-400">(Inactive)</span>}
                     </div>
-                    {account.position?.trim() && <p className="text-xs text-slate-300">{account.position.trim()}</p>}
+                    {(account.position?.trim() || accountIsSuperAdmin) && (
+                      <p className="text-xs text-slate-300">{positionLabel}</p>
+                    )}
                     <p className="text-xs text-slate-400 truncate">{account.email}</p>
                     <p className="text-[11px] text-slate-500">Created {new Date(account.created_at).toLocaleString()}</p>
                   </div>

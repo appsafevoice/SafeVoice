@@ -3,15 +3,41 @@
 import { useEffect, useMemo, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { ReportComment } from "@/lib/supabase/types"
+import { getAdminPositionLabel } from "@/lib/admin"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { MessageSquare, Loader2 } from "lucide-react"
+
+type SupabaseLikeError = {
+  code?: string
+  message?: string
+  details?: string | null
+  hint?: string | null
+}
+
+type RenderableReportComment = ReportComment & {
+  author_name: string
+  author_position_label: string
+}
 
 interface ReportCommentsThreadProps {
   reportId: string
   authorRole: "student" | "admin"
   className?: string
   variant?: "default" | "dark"
+}
+
+function isMissingReportCommentsColumnError(error?: SupabaseLikeError | null, columnName?: string) {
+  const message = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase()
+  const missingColumnMatch = columnName ? message.includes(columnName.toLowerCase()) : true
+
+  return (
+    error?.code === "42703" ||
+    error?.code === "PGRST204" ||
+    error?.code === "PGRST205" ||
+    (message.includes("schema cache") && missingColumnMatch) ||
+    (message.includes("column") && missingColumnMatch)
+  )
 }
 
 export function ReportCommentsThread({
@@ -21,7 +47,7 @@ export function ReportCommentsThread({
   variant = "default",
 }: ReportCommentsThreadProps) {
   const supabase = useMemo(() => createBrowserClient(), [])
-  const [comments, setComments] = useState<(ReportComment & { author_name: string })[]>([])
+  const [comments, setComments] = useState<RenderableReportComment[]>([])
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
   const [content, setContent] = useState("")
@@ -29,6 +55,7 @@ export function ReportCommentsThread({
   const [featureUnavailable, setFeatureUnavailable] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentAdminName, setCurrentAdminName] = useState("Administrator")
+  const [currentAdminPosition, setCurrentAdminPosition] = useState<string | null>(null)
 
   const isDark = variant === "dark"
 
@@ -36,20 +63,41 @@ export function ReportCommentsThread({
     setLoading(true)
     setError("")
 
-    let { data, error: fetchError } = await supabase
+    let data: ReportComment[] | null = null
+    let fetchError: SupabaseLikeError | null = null
+
+    const initialResponse = await supabase
       .from("report_comments")
-      .select("id, report_id, author_id, author_role, author_name, content, created_at")
+      .select("id, report_id, author_id, author_role, author_name, author_position, content, created_at")
       .eq("report_id", reportId)
       .order("created_at", { ascending: true })
 
-    if (fetchError?.code === "42703") {
-      const fallback = await supabase
+    data = (initialResponse.data as ReportComment[] | null) || null
+    fetchError = initialResponse.error
+
+    if (
+      isMissingReportCommentsColumnError(fetchError, "author_position") ||
+      isMissingReportCommentsColumnError(fetchError, "author_name")
+    ) {
+      const authorNameFallback = await supabase
+        .from("report_comments")
+        .select("id, report_id, author_id, author_role, author_name, content, created_at")
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: true })
+
+      data = (authorNameFallback.data as ReportComment[] | null) || null
+      fetchError = authorNameFallback.error
+    }
+
+    if (isMissingReportCommentsColumnError(fetchError, "author_name")) {
+      const legacyFallback = await supabase
         .from("report_comments")
         .select("id, report_id, author_id, author_role, content, created_at")
         .eq("report_id", reportId)
         .order("created_at", { ascending: true })
-      data = fallback.data
-      fetchError = fallback.error
+
+      data = (legacyFallback.data as ReportComment[] | null) || null
+      fetchError = legacyFallback.error
     }
 
     if (fetchError) {
@@ -63,7 +111,7 @@ export function ReportCommentsThread({
       return
     }
 
-    const rawComments = (data as ReportComment[]) || []
+    const rawComments = data || []
     const studentAuthorIds = [
       ...new Set(rawComments.filter((comment) => comment.author_role === "student").map((comment) => comment.author_id)),
     ].filter((id): id is string => Boolean(id))
@@ -95,6 +143,12 @@ export function ReportCommentsThread({
             : comment.author_id
               ? profileById.get(comment.author_id) || "Student"
               : "Student",
+        author_position_label:
+          comment.author_role === "admin"
+            ? (comment.author_id && comment.author_id === currentUserId ? currentAdminPosition?.trim() || null : null) ||
+              comment.author_position?.trim() ||
+              "Administrator"
+            : "Student",
       })),
     )
     setLoading(false)
@@ -109,6 +163,7 @@ export function ReportCommentsThread({
       if (!user) {
         setCurrentUserId(null)
         setCurrentAdminName("Administrator")
+        setCurrentAdminPosition(null)
         return
       }
 
@@ -118,14 +173,20 @@ export function ReportCommentsThread({
         const userEmail = (user.email || "").trim().toLowerCase()
         const { data: adminAccount } = await supabase
           .from("admin_accounts")
-          .select("full_name")
+          .select("full_name, position")
           .eq("email", userEmail)
           .eq("is_active", true)
           .maybeSingle()
 
         const displayName = adminAccount?.full_name?.trim() || user.user_metadata?.full_name?.trim() || "Administrator"
+        const displayPosition = getAdminPositionLabel(adminAccount?.position, userEmail)
         setCurrentAdminName(displayName)
+        setCurrentAdminPosition(displayPosition)
+        return
       }
+
+      setCurrentAdminName("Administrator")
+      setCurrentAdminPosition(null)
     }
 
     loadCurrentUser()
@@ -147,7 +208,7 @@ export function ReportCommentsThread({
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportId, currentUserId, currentAdminName])
+  }, [reportId, currentUserId, currentAdminName, currentAdminPosition])
 
   const submitComment = async () => {
     if (!content.trim()) return
@@ -159,22 +220,39 @@ export function ReportCommentsThread({
       data: { user },
     } = await supabase.auth.getUser()
 
-    let { error: insertError } = await supabase.from("report_comments").insert({
+    if (!user?.id) {
+      setError("Your session expired. Sign in again to post a comment.")
+      setPosting(false)
+      return
+    }
+
+    const baseInsertPayload = {
       report_id: reportId,
-      author_id: user?.id || null,
+      author_id: user.id,
       author_role: authorRole,
-      author_name: authorRole === "admin" ? currentAdminName : null,
       content: content.trim(),
+    }
+
+    let { error: insertError } = await supabase.from("report_comments").insert({
+      ...baseInsertPayload,
+      author_name: authorRole === "admin" ? currentAdminName : null,
+      author_position: authorRole === "admin" ? currentAdminPosition?.trim() || null : null,
     })
 
-    if (insertError?.code === "42703") {
-      const fallbackInsert = await supabase.from("report_comments").insert({
-        report_id: reportId,
-        author_id: user?.id || null,
-        author_role: authorRole,
-        content: content.trim(),
+    if (
+      isMissingReportCommentsColumnError(insertError, "author_position") ||
+      isMissingReportCommentsColumnError(insertError, "author_name")
+    ) {
+      const authorNameFallback = await supabase.from("report_comments").insert({
+        ...baseInsertPayload,
+        author_name: authorRole === "admin" ? currentAdminName : null,
       })
-      insertError = fallbackInsert.error
+      insertError = authorNameFallback.error
+    }
+
+    if (isMissingReportCommentsColumnError(insertError, "author_name")) {
+      const legacyFallback = await supabase.from("report_comments").insert(baseInsertPayload)
+      insertError = legacyFallback.error
     }
 
     if (insertError) {
@@ -235,7 +313,7 @@ export function ReportCommentsThread({
                 </span>
               </div>
               <p className={`text-[10px] ${isDark ? "text-slate-300" : "text-muted-foreground"}`}>
-                {comment.author_role === "admin" ? "Administrator" : "Student"}
+                {comment.author_position_label}
               </p>
               <p className="text-xs mt-1 whitespace-pre-wrap">{comment.content}</p>
             </div>

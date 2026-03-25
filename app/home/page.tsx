@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { Logo } from "@/components/ui/logo"
 import { ReportButton } from "@/components/home/report-button"
 import { AnnouncementsFeed } from "@/components/home/announcements-feed"
+import { StudentReportCommentsNotificationsBell } from "@/components/student/student-report-comments-notifications-bell"
 import type { Announcement, Profile } from "@/lib/supabase/types"
 import { redirect } from "next/navigation"
 import { normalizeEmail } from "@/lib/admin"
@@ -81,9 +82,12 @@ export default async function HomePage() {
         {/* Header */}
         <header className="flex items-start justify-between gap-4 pt-2">
           <Logo size="sm" />
-          <div className="text-right min-w-0">
-            <p className="text-sm text-muted-foreground">Welcome back,</p>
-            <p className="font-semibold text-foreground truncate">{profile?.first_name || "Student"}</p>
+          <div className="flex items-start gap-3 min-w-0">
+            <StudentReportCommentsNotificationsBell />
+            <div className="text-right min-w-0">
+              <p className="text-sm text-muted-foreground">Welcome back,</p>
+              <p className="font-semibold text-foreground truncate">{profile?.first_name || "Student"}</p>
+            </div>
           </div>
         </header>
 

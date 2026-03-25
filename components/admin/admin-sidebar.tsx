@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { Home, FileText, BarChart3, Upload, UserCog, LogOut, X, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { getAdminRoleLabel, isSuperAdminEmail } from "@/lib/admin"
+import { getAdminPositionLabel, isSuperAdminEmail } from "@/lib/admin"
 
 interface AdminSidebarProps {
   open: boolean
@@ -27,7 +27,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
   const router = useRouter()
   const supabase = createBrowserClient()
   const isSuperAdmin = isSuperAdminEmail(adminEmail)
-  const roleLabel = adminPosition?.trim() || getAdminRoleLabel(adminEmail)
+  const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
   const navItems = isSuperAdmin
     ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Admin Management", icon: UserCog }]
     : baseNavItems

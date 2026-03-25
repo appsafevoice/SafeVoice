@@ -11,6 +11,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 
 interface RecentReportsProps {
   reports: Report[]
+  initialOpenReportId?: string | null
 }
 
 const statusConfig = {
@@ -45,7 +46,7 @@ const bullyingTypeLabels: Record<string, string> = {
   other: "Other",
 }
 
-export function RecentReports({ reports }: RecentReportsProps) {
+export function RecentReports({ reports, initialOpenReportId = null }: RecentReportsProps) {
   const supabase = createBrowserClient()
   const [localReports, setLocalReports] = useState<Report[]>(reports)
   const [openCommentsByReport, setOpenCommentsByReport] = useState<Record<string, boolean>>({})
@@ -57,6 +58,21 @@ export function RecentReports({ reports }: RecentReportsProps) {
   useEffect(() => {
     setLocalReports(reports)
   }, [reports])
+
+  useEffect(() => {
+    if (!initialOpenReportId) return
+
+    setOpenCommentsByReport((prev) => ({ ...prev, [initialOpenReportId]: true }))
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`student-report-${initialOpenReportId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [initialOpenReportId])
 
   useEffect(() => {
     const reportIds = reports.map((report) => report.id)
@@ -98,7 +114,7 @@ export function RecentReports({ reports }: RecentReportsProps) {
           const StatusIcon = status.icon
 
           return (
-            <div key={report.id} className="p-3 bg-muted/50 rounded-lg">
+            <div id={`student-report-${report.id}`} key={report.id} className="p-3 bg-muted/50 rounded-lg scroll-mt-24">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

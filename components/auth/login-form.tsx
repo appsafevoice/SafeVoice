@@ -43,6 +43,16 @@ function isEmailRateLimitError(message?: string) {
   )
 }
 
+function isMissingAdminFirstLoginSetupError(code?: string, message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+  return (
+    code === "42883" ||
+    code === "PGRST202" ||
+    normalizedMessage.includes("admin_accounts_prepare_first_login") ||
+    normalizedMessage.includes("schema cache")
+  )
+}
+
 export function LoginForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -114,8 +124,10 @@ export function LoginForm() {
         )
 
         if (pendingAdminError) {
-          if (pendingAdminError.code === "42883") {
-            setError("Admin first-login setup is missing. Run the latest Supabase migrations and try again.")
+          if (isMissingAdminFirstLoginSetupError(pendingAdminError.code, pendingAdminError.message)) {
+            setError(
+              "Admin first-login setup is missing in Supabase. Apply migration `20260325_defer_admin_otp_until_first_login.sql` and try again.",
+            )
           } else {
             setError(pendingAdminError.message || "Unable to prepare the admin login.")
           }

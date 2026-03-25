@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/server"
 import { AppShell } from "@/components/layout/app-shell"
 import { RecentReports } from "@/components/profile/recent-reports"
 
-export default async function ProfileReportsPage() {
+interface ProfileReportsPageProps {
+  searchParams?: Promise<{ reportId?: string }>
+}
+
+export default async function ProfileReportsPage({ searchParams }: ProfileReportsPageProps) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,6 +26,9 @@ export default async function ProfileReportsPage() {
     .order("created_at", { ascending: false })
     .limit(20)
 
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const initialOpenReportId = resolvedSearchParams?.reportId?.trim() || null
+
   return (
     <AppShell>
       <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
@@ -32,7 +39,7 @@ export default async function ProfileReportsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Recent Reports</h1>
         </header>
         <div className="max-w-3xl mx-auto">
-          <RecentReports reports={reports || []} />
+          <RecentReports reports={reports || []} initialOpenReportId={initialOpenReportId} />
         </div>
       </div>
     </AppShell>

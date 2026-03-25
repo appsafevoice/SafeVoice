@@ -2,7 +2,7 @@
 
 import { Menu } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { getAdminRoleLabel, getInitials } from "@/lib/admin"
+import { getAdminPositionLabel, getInitials } from "@/lib/admin"
 import { AdminReportsNotificationsBell } from "./admin-reports-notifications-bell"
 
 interface AdminNavbarProps {
@@ -14,7 +14,7 @@ interface AdminNavbarProps {
 
 export function AdminNavbar({ onMenuClick, adminName, adminEmail, adminPosition }: AdminNavbarProps) {
   const initials = getInitials(adminName) || "AD"
-  const roleLabel = adminPosition?.trim() || getAdminRoleLabel(adminEmail)
+  const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
 
   return (
     <header className="sticky top-0 z-30 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700">

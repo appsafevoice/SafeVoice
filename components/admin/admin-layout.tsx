@@ -7,7 +7,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { AdminSidebar } from "./admin-sidebar"
 import { AdminNavbar } from "./admin-navbar"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { DEFAULT_ADMIN_NAME, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
+import { DEFAULT_ADMIN_NAME, getAdminPositionLabel, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -73,7 +73,7 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
 
       setAdminName(adminDisplayName)
       setAdminEmail(userEmail)
-      setAdminPosition(adminAccount?.position?.trim() || null)
+      setAdminPosition(getAdminPositionLabel(adminAccount?.position, userEmail))
       setIsAuthenticated(true)
       setIsLoading(false)
     }

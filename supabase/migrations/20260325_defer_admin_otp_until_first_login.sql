@@ -8,7 +8,7 @@ create or replace function public.admin_accounts_prepare_first_login(
 )
 returns table (
   full_name text,
-  position text,
+  "position" text,
   email text
 )
 language plpgsql
@@ -27,7 +27,7 @@ begin
   return query
     select
       a.full_name::text,
-      a.position::text,
+      a.position::text as "position",
       a.email::text
     from public.admin_accounts a
     where a.is_active = true

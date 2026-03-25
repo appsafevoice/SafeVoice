@@ -22,7 +22,15 @@ export function isReservedAdminEmail(email?: string | null) {
 }
 
 export function getAdminRoleLabel(email?: string | null) {
-  return isSuperAdminEmail(email) ? "Super Admin" : DEFAULT_ADMIN_NAME
+  return isSuperAdminEmail(email) ? "Admin" : DEFAULT_ADMIN_NAME
+}
+
+export function getAdminPositionLabel(position?: string | null, email?: string | null) {
+  if (isSuperAdminEmail(email)) {
+    return "Admin"
+  }
+
+  return position?.trim() || getAdminRoleLabel(email)
 }
 
 export function getInitials(name: string) {
