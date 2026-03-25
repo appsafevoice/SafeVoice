@@ -294,10 +294,7 @@ export default function AdminReportsPage() {
     }
 
     const detailText = report.details?.trim() || ""
-    if (detailText) {
-      const wordCount = detailText.split(/\s+/).filter(Boolean).length
-      insights.push(`Incident details contain ${wordCount} word${wordCount === 1 ? "" : "s"}.`)
-    } else {
+    if (!detailText) {
       insights.push("No incident details were provided.")
     }
 
