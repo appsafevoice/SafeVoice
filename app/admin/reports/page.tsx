@@ -485,7 +485,9 @@ export default function AdminReportsPage() {
                           {report.status || "pending"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-white line-clamp-2 mb-2">{report.details}</p>
+                      <p className="text-sm text-white whitespace-pre-line mb-2">
+                        {report.details ? report.details.slice(0, 140) : "No details provided."}
+                      </p>
                       <div className="flex flex-wrap gap-4 text-xs text-slate-400">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
