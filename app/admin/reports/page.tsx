@@ -403,8 +403,8 @@ export default function AdminReportsPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Report Details</h1>
-          <p className="text-slate-400">View and manage all submitted bullying reports</p>
+          <h1 className="text-2xl font-bold text-[#800000]">Report Details</h1>
+          <p className="text-[#8f6060]">View and manage all submitted bullying reports</p>
         </div>
 
         {/* Filters */}
@@ -523,8 +523,8 @@ export default function AdminReportsPage() {
             clearReportIdFromUrl()
           }}
         >
-          <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:text-white">
-            <DialogHeader>
+          <DialogContent className="h-[min(90vh,48rem)] w-[min(96vw,90rem)] max-w-[min(96vw,90rem)] sm:max-w-[min(96vw,90rem)] overflow-hidden bg-slate-800 border-slate-700 p-0 gap-0 flex flex-col [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:text-white">
+            <DialogHeader className="shrink-0 border-b border-slate-700 px-6 py-5 pr-14">
               <DialogTitle className="text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-cyan-400" />
                 Report Details
@@ -535,124 +535,126 @@ export default function AdminReportsPage() {
             </DialogHeader>
 
             {selectedReport && (
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handlePrintReport(selectedReport)}
-                    disabled={isPrinting}
-                    className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600"
-                  >
-                    <Printer className="w-4 h-4 mr-2" />
-                    {isPrinting ? "Preparing..." : "Print / Save PDF"}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Type</p>
-                    <Badge variant="outline" className="border-cyan-500/50 text-cyan-400">
-                      {selectedReport.bullying_type}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Status</p>
-                    <Select
-                      value={selectedReport.status || "pending"}
-                      onValueChange={(value) => updateStatus(selectedReport.id, value)}
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handlePrintReport(selectedReport)}
+                      disabled={isPrinting}
+                      className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600"
                     >
-                      <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                        <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
-                        <SelectItem value="resolved" className="text-white">Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Printer className="w-4 h-4 mr-2" />
+                      {isPrinting ? "Preparing..." : "Print / Save PDF"}
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Reporter</p>
-                    <p className="text-sm text-white">{selectedReport.reporter_name || "Unknown Student"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Incident Date</p>
-                    <p className="text-sm text-white">
-                      {selectedReport.incident_date
-                        ? new Date(selectedReport.incident_date).toLocaleDateString()
-                        : "Not specified"}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Details</p>
-                  <div className="p-3 bg-slate-700/30 rounded-lg">
-                    <p className="text-sm text-white whitespace-pre-wrap">{selectedReport.details}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Descriptive Analysis</p>
-                  <div className="p-3 bg-slate-700/30 rounded-lg">
-                    {reportInsights.length > 0 ? (
-                      <ul className="list-disc list-inside text-sm text-slate-100 space-y-1">
-                        {reportInsights.map((item, index) => (
-                          <li key={`${index}-${item}`}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-slate-400">No analysis available.</p>
-                    )}
-                  </div>
-                </div>
-
-                {selectedReport.attachments && selectedReport.attachments.length > 0 && (
-                  <div>
-                    <p className="text-xs text-slate-400 mb-2">Attachments</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {selectedReport.attachments.map((url, i) => (
-                        <div key={i} className="rounded-lg border border-slate-600 bg-slate-700/30 overflow-hidden">
-                          {isImageAttachment(url) ? (
-                            <img
-                              src={url}
-                              alt={`Attachment ${i + 1}`}
-                              className="w-full h-44 object-cover bg-slate-900"
-                            />
-                          ) : isVideoAttachment(url) ? (
-                            <video src={url} controls className="w-full h-44 bg-slate-900" preload="metadata" />
-                          ) : (
-                            <div className="h-44 flex items-center justify-center text-sm text-slate-300 bg-slate-900 px-4 text-center">
-                              Preview unavailable for this file type
-                            </div>
-                          )}
-                          <div className="p-2 flex items-center justify-between gap-2">
-                            <span className="text-xs text-slate-300">Attachment {i + 1}</span>
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-2.5 py-1 rounded bg-slate-700 text-xs text-cyan-300 hover:bg-slate-600"
-                              >
-                                Open
-                              </a>
-                              <a
-                                href={url}
-                                download
-                                className="px-2.5 py-1 rounded bg-slate-700 text-xs text-cyan-300 hover:bg-slate-600"
-                              >
-                                Download
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Type</p>
+                      <Badge variant="outline" className="border-cyan-500/50 text-cyan-400">
+                        {selectedReport.bullying_type}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Status</p>
+                      <Select
+                        value={selectedReport.status || "pending"}
+                        onValueChange={(value) => updateStatus(selectedReport.id, value)}
+                      >
+                        <SelectTrigger className="w-full max-w-xs bg-slate-700/50 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700">
+                          <SelectItem value="pending" className="text-white">Pending</SelectItem>
+                          <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
+                          <SelectItem value="resolved" className="text-white">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Reporter</p>
+                      <p className="text-sm text-white">{selectedReport.reporter_name || "Unknown Student"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Incident Date</p>
+                      <p className="text-sm text-white">
+                        {selectedReport.incident_date
+                          ? new Date(selectedReport.incident_date).toLocaleDateString()
+                          : "Not specified"}
+                      </p>
                     </div>
                   </div>
-                )}
 
-                <ReportCommentsThread reportId={selectedReport.id} authorRole="admin" variant="dark" className="pt-1" />
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Details</p>
+                    <div className="p-3 bg-slate-700/30 rounded-lg">
+                      <p className="text-sm text-white whitespace-pre-wrap">{selectedReport.details}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Descriptive Analysis</p>
+                    <div className="p-3 bg-slate-700/30 rounded-lg">
+                      {reportInsights.length > 0 ? (
+                        <ul className="list-disc list-inside text-sm text-slate-100 space-y-1">
+                          {reportInsights.map((item, index) => (
+                            <li key={`${index}-${item}`}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-slate-400">No analysis available.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedReport.attachments && selectedReport.attachments.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-2">Attachments</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedReport.attachments.map((url, i) => (
+                          <div key={i} className="rounded-lg border border-slate-600 bg-slate-700/30 overflow-hidden">
+                            {isImageAttachment(url) ? (
+                              <img
+                                src={url}
+                                alt={`Attachment ${i + 1}`}
+                                className="w-full h-44 object-cover bg-slate-900"
+                              />
+                            ) : isVideoAttachment(url) ? (
+                              <video src={url} controls className="w-full h-44 bg-slate-900" preload="metadata" />
+                            ) : (
+                              <div className="h-44 flex items-center justify-center text-sm text-slate-300 bg-slate-900 px-4 text-center">
+                                Preview unavailable for this file type
+                              </div>
+                            )}
+                            <div className="p-2 flex items-center justify-between gap-2">
+                              <span className="text-xs text-slate-300">Attachment {i + 1}</span>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 rounded bg-slate-700 text-xs text-cyan-300 hover:bg-slate-600"
+                                >
+                                  Open
+                                </a>
+                                <a
+                                  href={url}
+                                  download
+                                  className="px-2.5 py-1 rounded bg-slate-700 text-xs text-cyan-300 hover:bg-slate-600"
+                                >
+                                  Download
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <ReportCommentsThread reportId={selectedReport.id} authorRole="admin" variant="dark" className="pt-1" />
+                </div>
               </div>
             )}
           </DialogContent>

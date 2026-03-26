@@ -361,7 +361,7 @@ export function StudentReportCommentsNotificationsBell() {
             className="relative h-10 w-10 rounded-full border-border/70 bg-card/95 shadow-sm backdrop-blur hover:bg-accent"
           >
             <Bell className="h-5 w-5" />
-            {unreadCount > 0 ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-500" /> : null}
+            {unreadCount > 0 ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" /> : null}
           </Button>
         </PopoverTrigger>
 
@@ -393,18 +393,18 @@ export function StudentReportCommentsNotificationsBell() {
                       onClick={() => openItem(item)}
                       className={cn(
                         "w-full rounded-md border border-transparent px-2.5 py-2 text-left transition-colors hover:bg-accent",
-                        unread ? "bg-cyan-500/10 border-cyan-500/20" : "bg-background",
+                        unread ? "bg-primary/10 border-primary/20" : "bg-background",
                       )}
                     >
                       <div className="flex items-start gap-2">
-                        <div className="mt-0.5 rounded bg-cyan-500/10 p-1.5">
-                          <MessageSquare className="h-4 w-4 text-cyan-600" />
+                        <div className="mt-0.5 rounded bg-primary/10 p-1.5">
+                          <MessageSquare className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <p className="truncate text-sm font-medium">
                               {bullyingTypeLabel}{" "}
-                              {unread ? <span className="ml-1 text-xs text-cyan-600 align-middle">(new)</span> : null}
+                              {unread ? <span className="ml-1 text-xs text-primary align-middle">(new)</span> : null}
                             </p>
                             <p className="whitespace-nowrap text-[11px] text-muted-foreground">
                               {new Date(item.created_at).toLocaleDateString()}

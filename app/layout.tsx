@@ -14,21 +14,9 @@ export const metadata: Metadata = {
   generator: "v0.app",
   manifest: "/manifest.json",
   icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
+    icon: [{ url: "/images/safe-voice-logo.png", type: "image/png" }],
+    shortcut: "/images/safe-voice-logo.png",
+    apple: "/images/safe-voice-logo.png",
   },
 }
 
@@ -37,7 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#5B9BD5",
+  themeColor: "#800000",
 }
 
 export default function RootLayout({

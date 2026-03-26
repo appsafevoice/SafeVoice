@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
+import {
+  ADMIN_CHART_AXIS,
+  ADMIN_CHART_BORDER,
+  ADMIN_CHART_COLORS,
+  ADMIN_CHART_GRID,
+  ADMIN_CHART_SURFACE,
+  ADMIN_CHART_TEXT,
+} from "@/lib/admin-theme"
 import { Printer } from "lucide-react"
 import {
   BarChart,
@@ -44,8 +52,6 @@ type ExportSectionKey =
   | "descriptiveAnalysis"
 
 type ExportSectionsState = Record<ExportSectionKey, boolean>
-
-const COLORS = ["#06b6d4", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e", "#ec4899"]
 
 export default function AdminAnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([])
@@ -633,23 +639,23 @@ export default function AdminAnalyticsPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Data Reports</h1>
-          <p className="text-slate-400">Comprehensive analytics and visualizations of bullying reports</p>
+          <h1 className="text-2xl font-bold text-[#800000]">Data Reports</h1>
+          <p className="text-[#8f6060]">Comprehensive analytics and visualizations of bullying reports</p>
         </div>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/admin/reports?status=all" className="block">
-            <Card className="bg-slate-800/50 border-slate-700 hover:border-cyan-500/50 transition-colors cursor-pointer">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-blue-300 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-cyan-400">{reports.length}</p>
+                <p className="text-3xl font-bold text-blue-600">{reports.length}</p>
                 <p className="text-sm text-slate-400">Total Reports</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/admin/reports?status=pending" className="block">
-            <Card className="bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-amber-300 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-amber-400">
+                <p className="text-3xl font-bold text-amber-600">
                   {reports.filter((r) => r.status === "pending" || !r.status).length}
                 </p>
                 <p className="text-sm text-slate-400">Pending</p>
@@ -657,9 +663,9 @@ export default function AdminAnalyticsPage() {
             </Card>
           </Link>
           <Link href="/admin/reports?status=in_progress" className="block">
-            <Card className="bg-slate-800/50 border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-violet-300 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-purple-400">
+                <p className="text-3xl font-bold text-violet-600">
                   {reports.filter((r) => r.status === "in_progress").length}
                 </p>
                 <p className="text-sm text-slate-400">In Progress</p>
@@ -667,9 +673,9 @@ export default function AdminAnalyticsPage() {
             </Card>
           </Link>
           <Link href="/admin/reports?status=resolved" className="block">
-            <Card className="bg-slate-800/50 border-slate-700 hover:border-green-500/50 transition-colors cursor-pointer">
+            <Card className="bg-slate-800/50 border-slate-700 hover:border-emerald-300 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-green-400">
+                <p className="text-3xl font-bold text-emerald-600">
                   {reports.filter((r) => r.status === "resolved").length}
                 </p>
                 <p className="text-sm text-slate-400">Resolved</p>
@@ -840,26 +846,26 @@ export default function AdminAnalyticsPage() {
                     <AreaChart data={monthlyData}>
                       <defs>
                         <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                          <stop offset="5%" stopColor={ADMIN_CHART_COLORS[0]} stopOpacity={0.3} />
+                          <stop offset="95%" stopColor={ADMIN_CHART_COLORS[0]} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-                      <YAxis stroke="#94a3b8" fontSize={12} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
+                      <XAxis dataKey="month" stroke={ADMIN_CHART_AXIS} fontSize={12} />
+                      <YAxis stroke={ADMIN_CHART_AXIS} fontSize={12} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#1e293b",
-                          border: "1px solid #334155",
+                          backgroundColor: ADMIN_CHART_SURFACE,
+                          border: `1px solid ${ADMIN_CHART_BORDER}`,
                           borderRadius: "8px",
                         }}
-                        labelStyle={{ color: "#f8fafc" }}
-                        itemStyle={{ color: "#f8fafc" }}
+                        labelStyle={{ color: ADMIN_CHART_TEXT }}
+                        itemStyle={{ color: ADMIN_CHART_TEXT }}
                       />
                       <Area
                         type="monotone"
                         dataKey="reports"
-                        stroke="#06b6d4"
+                        stroke={ADMIN_CHART_COLORS[0]}
                         fillOpacity={1}
                         fill="url(#colorReports)"
                       />
@@ -917,16 +923,16 @@ export default function AdminAnalyticsPage() {
                         labelLine={false}
                       >
                         {typeData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#1e293b",
-                          border: "1px solid #334155",
+                          backgroundColor: ADMIN_CHART_SURFACE,
+                          border: `1px solid ${ADMIN_CHART_BORDER}`,
                           borderRadius: "8px",
                         }}
-                        itemStyle={{ color: "#f8fafc" }}
+                        itemStyle={{ color: ADMIN_CHART_TEXT }}
                       />
                       <Legend
                         verticalAlign="bottom"
@@ -971,19 +977,19 @@ export default function AdminAnalyticsPage() {
                 {dailyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dailyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} angle={-45} textAnchor="end" height={60} />
-                      <YAxis stroke="#94a3b8" fontSize={12} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
+                      <XAxis dataKey="date" stroke={ADMIN_CHART_AXIS} fontSize={10} angle={-45} textAnchor="end" height={60} />
+                      <YAxis stroke={ADMIN_CHART_AXIS} fontSize={12} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#1e293b",
-                          border: "1px solid #334155",
+                          backgroundColor: ADMIN_CHART_SURFACE,
+                          border: `1px solid ${ADMIN_CHART_BORDER}`,
                           borderRadius: "8px",
                         }}
-                        labelStyle={{ color: "#f8fafc" }}
-                        itemStyle={{ color: "#f8fafc" }}
+                        labelStyle={{ color: ADMIN_CHART_TEXT }}
+                        itemStyle={{ color: ADMIN_CHART_TEXT }}
                       />
-                      <Bar dataKey="reports" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="reports" fill={ADMIN_CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1037,17 +1043,17 @@ export default function AdminAnalyticsPage() {
               {visibleTypeKeys.length > 0 && typeByMonth.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={typeByMonth}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-                    <YAxis stroke="#94a3b8" fontSize={12} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
+                    <XAxis dataKey="month" stroke={ADMIN_CHART_AXIS} fontSize={12} />
+                    <YAxis stroke={ADMIN_CHART_AXIS} fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
+                        backgroundColor: ADMIN_CHART_SURFACE,
+                        border: `1px solid ${ADMIN_CHART_BORDER}`,
                         borderRadius: "8px",
                       }}
-                      labelStyle={{ color: "#f8fafc" }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      labelStyle={{ color: ADMIN_CHART_TEXT }}
+                      itemStyle={{ color: ADMIN_CHART_TEXT }}
                     />
                     <Legend
                       verticalAlign="top"
@@ -1059,7 +1065,7 @@ export default function AdminAnalyticsPage() {
                         key={type}
                         dataKey={type}
                         stackId="a"
-                        fill={COLORS[index % COLORS.length]}
+                        fill={ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]}
                         radius={index === visibleTypeKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                       />
                     ))}

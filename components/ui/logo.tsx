@@ -31,8 +31,8 @@ export function Logo({ size = "md", showText = true }: LogoProps) {
       </div>
       {showText && (
         <div className="flex flex-col">
-          <span className={`${textSizeClasses[size]} font-bold text-sky-600 leading-tight`}>SafeVoice</span>
-          <span className="text-xs text-sky-500/80">Speak up. Stay safe.</span>
+          <span className={`${textSizeClasses[size]} font-bold text-primary leading-tight`}>SafeVoice</span>
+          <span className="text-xs text-primary/70">Speak up. Stay safe.</span>
         </div>
       )}
     </div>

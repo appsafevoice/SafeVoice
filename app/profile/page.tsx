@@ -14,6 +14,24 @@ export default async function ProfilePage() {
 
   // Get profile
   let { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  const schoolIdUrl =
+    typeof user.user_metadata?.school_id_url === "string" && user.user_metadata.school_id_url.trim()
+      ? user.user_metadata.school_id_url.trim()
+      : null
+
+  if (profile && schoolIdUrl && !profile.school_id_url) {
+    const { data: updatedProfile } = await supabase
+      .from("profiles")
+      .update({
+        school_id_url: schoolIdUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id)
+      .select("*")
+      .single()
+
+    profile = updatedProfile || profile
+  }
 
   if (!profile) {
     const firstName =
@@ -44,6 +62,7 @@ export default async function ProfilePage() {
         lrn,
         first_name: firstName,
         last_name: lastName,
+        school_id_url: schoolIdUrl,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -59,6 +78,7 @@ export default async function ProfilePage() {
         lrn: lrn || "",
         first_name: firstName,
         last_name: lastName,
+        school_id_url: schoolIdUrl || undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }

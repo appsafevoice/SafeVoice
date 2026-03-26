@@ -25,6 +25,14 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
   const [adminPosition, setAdminPosition] = useState<string | null>(null)
 
   useEffect(() => {
+    document.body.classList.add("admin-theme")
+
+    return () => {
+      document.body.classList.remove("admin-theme")
+    }
+  }, [])
+
+  useEffect(() => {
     const checkAuth = async () => {
       const supabase = createBrowserClient()
       const {
@@ -83,8 +91,8 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#800000]"></div>
       </div>
     )
   }
@@ -94,7 +102,7 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="admin-theme min-h-screen bg-slate-900">
       <AdminSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -108,7 +116,7 @@ export function AdminLayout({ children, requireSuperAdmin = false }: AdminLayout
           adminEmail={adminEmail}
           adminPosition={adminPosition}
         />
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="min-h-screen bg-white p-4 lg:p-6">{children}</main>
       </div>
     </div>
   )

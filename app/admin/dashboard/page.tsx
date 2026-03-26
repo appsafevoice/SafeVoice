@@ -8,6 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
+  ADMIN_CHART_AXIS,
+  ADMIN_CHART_BORDER,
+  ADMIN_CHART_COLORS,
+  ADMIN_CHART_GRID,
+  ADMIN_CHART_SURFACE,
+  ADMIN_CHART_TEXT,
+} from "@/lib/admin-theme"
+import {
   XAxis,
   YAxis,
   CartesianGrid,
@@ -38,8 +46,6 @@ interface Announcement {
   created_at: string
   is_active: boolean
 }
-
-const COLORS = ["#06b6d4", "#f59e0b", "#ef4444", "#8b5cf6", "#22c55e"]
 
 export default function AdminDashboardPage() {
   const [reports, setReports] = useState<Report[]>([])
@@ -130,32 +136,36 @@ export default function AdminDashboardPage() {
       title: "Total Reports",
       value: reports.length,
       icon: FileText,
-      color: "text-cyan-400",
-      bgColor: "bg-cyan-500/20",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+      hoverBorder: "hover:border-blue-300",
       href: "/admin/reports",
     },
     {
       title: "Pending Review",
       value: reports.filter((r) => r.status === "pending").length,
       icon: Clock,
-      color: "text-amber-400",
-      bgColor: "bg-amber-500/20",
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
+      hoverBorder: "hover:border-amber-300",
       href: "/admin/reports?status=pending",
     },
     {
       title: "Resolved Cases",
       value: reports.filter((r) => r.status === "resolved").length,
       icon: TrendingUp,
-      color: "text-green-400",
-      bgColor: "bg-green-500/20",
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-100",
+      hoverBorder: "hover:border-emerald-300",
       href: "/admin/reports?status=resolved",
     },
     {
       title: "Active Post",
       value: announcements.filter((a) => a.is_active).length,
       icon: Megaphone,
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/20",
+      color: "text-violet-600",
+      bgColor: "bg-violet-100",
+      hoverBorder: "hover:border-violet-300",
       href: "/admin/content",
     },
   ]
@@ -165,15 +175,15 @@ export default function AdminDashboardPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
-          <p className="text-slate-400">Monitor bullying reports and manage counselor communications</p>
+          <h1 className="text-2xl font-bold text-[#800000]">Dashboard Overview</h1>
+          <p className="text-[#8f6060]">Monitor bullying reports and manage counselor communications</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <Link key={stat.title} href={stat.href} className="block">
-              <Card className="bg-slate-800/50 border-slate-700 hover:border-cyan-500/50 transition-colors cursor-pointer">
+              <Card className={`bg-slate-800/50 border-slate-700 transition-colors cursor-pointer ${stat.hoverBorder}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${stat.bgColor}`}>
@@ -202,24 +212,24 @@ export default function AdminDashboardPage() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} />
-                    <YAxis stroke="#94a3b8" fontSize={12} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
+                    <XAxis dataKey="day" stroke={ADMIN_CHART_AXIS} fontSize={12} />
+                    <YAxis stroke={ADMIN_CHART_AXIS} fontSize={12} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
+                        backgroundColor: ADMIN_CHART_SURFACE,
+                        border: `1px solid ${ADMIN_CHART_BORDER}`,
                         borderRadius: "8px",
                       }}
-                      labelStyle={{ color: "#f8fafc" }}
-                      itemStyle={{ color: "#f8fafc" }}
+                      labelStyle={{ color: ADMIN_CHART_TEXT }}
+                      itemStyle={{ color: ADMIN_CHART_TEXT }}
                     />
                     <Line
                       type="monotone"
                       dataKey="reports"
-                      stroke="#06b6d4"
+                      stroke={ADMIN_CHART_COLORS[0]}
                       strokeWidth={2}
-                      dot={{ fill: "#06b6d4" }}
+                      dot={{ fill: ADMIN_CHART_COLORS[0] }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -270,16 +280,16 @@ export default function AdminDashboardPage() {
                         labelLine={false}
                       >
                         {bullyingTypeData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "#1e293b",
-                          border: "1px solid #334155",
+                          backgroundColor: ADMIN_CHART_SURFACE,
+                          border: `1px solid ${ADMIN_CHART_BORDER}`,
                           borderRadius: "8px",
                         }}
-                        itemStyle={{ color: "#f8fafc" }}
+                        itemStyle={{ color: ADMIN_CHART_TEXT }}
                       />
                     </PieChart>
                   </ResponsiveContainer>

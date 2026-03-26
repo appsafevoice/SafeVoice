@@ -49,6 +49,10 @@ export default async function HomePage() {
 
   if (user) {
     const userEmail = normalizeEmail(user.email)
+    const schoolIdUrl =
+      typeof user.user_metadata?.school_id_url === "string" && user.user_metadata.school_id_url.trim()
+        ? user.user_metadata.school_id_url.trim()
+        : null
     const { data: adminAccount, error: adminError } = await supabase
       .from("admin_accounts")
       .select("email")
@@ -63,7 +67,22 @@ export default async function HomePage() {
     }
 
     const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-    profile = data
+
+    if (data && schoolIdUrl && !data.school_id_url) {
+      const { data: updatedProfile } = await supabase
+        .from("profiles")
+        .update({
+          school_id_url: schoolIdUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+        .select("*")
+        .single()
+
+      profile = updatedProfile || data
+    } else {
+      profile = data
+    }
   }
 
   // Get announcements

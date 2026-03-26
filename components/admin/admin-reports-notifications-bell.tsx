@@ -606,10 +606,10 @@ export function AdminReportsNotificationsBell() {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white relative">
+        <Button variant="ghost" size="icon" className="relative text-white/70 hover:text-white/95 hover:bg-white/10">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 ? (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-400" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />
           ) : null}
         </Button>
       </PopoverTrigger>

@@ -425,7 +425,7 @@ export function AdminAccountsManager() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-white truncate">{account.full_name}</p>
                       {accountIsSuperAdmin ? (
-                        <Badge className="bg-amber-500/15 text-amber-200 border border-amber-400/40">Super Admin</Badge>
+                        <Badge className="border border-amber-300 bg-amber-100 text-amber-900">Super Admin</Badge>
                       ) : (
                         <Badge variant="outline" className="border-slate-500 text-slate-200">
                           Admin
@@ -446,7 +446,7 @@ export function AdminAccountsManager() {
                   </div>
 
                   {accountIsSuperAdmin ? (
-                    <div className="text-xs font-medium text-amber-200">Protected account</div>
+                    <div className="text-xs font-medium text-amber-900">Protected account</div>
                   ) : (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between sm:justify-end gap-3">
                       <div className="flex items-center gap-2">

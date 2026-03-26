@@ -1,9 +1,10 @@
 "use client"
 
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Home, FileText, BarChart3, Upload, UserCog, LogOut, X, ShieldCheck } from "lucide-react"
+import { Home, FileText, BarChart3, Upload, UserCog, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { getAdminPositionLabel, isSuperAdminEmail } from "@/lib/admin"
@@ -45,23 +46,29 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-slate-800 border-r border-slate-700 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "admin-chrome fixed inset-y-0 left-0 z-50 w-64 bg-[#800000] border-r border-[#6a0000] transform transition-transform duration-200 ease-in-out lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-cyan-400" />
+              <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                <Image
+                  src="/images/safe-voice-logo.png"
+                  alt="SafeVoice logo"
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 object-contain"
+                />
               </div>
               <div>
-                <h2 className="font-semibold text-white">SafeVoice</h2>
-                <p className="text-xs text-slate-400">{roleLabel}</p>
+                <h2 className="font-semibold text-white/95">SafeVoice</h2>
+                <p className="text-xs text-white/70">{roleLabel}</p>
               </div>
             </div>
-            <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
+            <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white/95">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -77,7 +84,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
                   onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-                    isActive ? "bg-cyan-500/20 text-cyan-400" : "text-slate-400 hover:bg-slate-700/50 hover:text-white",
+                    isActive ? "bg-white/14 text-white/95" : "text-white/80 hover:bg-white/10 hover:text-white/95",
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -88,13 +95,13 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slate-700">
+          <div className="p-4 border-t border-white/10">
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+              className="w-full justify-start gap-3 !text-white/95 hover:!text-white hover:bg-white/10"
             >
-              <LogOut className="w-5 h-5 mr-3" />
+              <LogOut className="h-5 w-5" />
               Logout
             </Button>
           </div>

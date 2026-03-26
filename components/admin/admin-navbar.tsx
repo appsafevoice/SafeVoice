@@ -17,9 +17,9 @@ export function AdminNavbar({ onMenuClick, adminName, adminEmail, adminPosition 
   const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700">
+    <header className="admin-chrome sticky top-0 z-30 bg-[#800000]/95 backdrop-blur-sm border-b border-[#6a0000]">
       <div className="flex items-center justify-between px-4 h-16">
-        <button onClick={onMenuClick} className="lg:hidden text-slate-400 hover:text-white">
+        <button onClick={onMenuClick} className="lg:hidden text-white/70 hover:text-white/95">
           <Menu className="w-6 h-6" />
         </button>
 
@@ -27,12 +27,12 @@ export function AdminNavbar({ onMenuClick, adminName, adminEmail, adminPosition 
           <AdminReportsNotificationsBell />
 
           <div className="flex items-center gap-3">
-            <Avatar className="w-8 h-8 bg-cyan-600">
-              <AvatarFallback className="bg-cyan-600 text-white text-sm">{initials}</AvatarFallback>
+            <Avatar className="w-8 h-8 bg-white/15 border border-white/10">
+              <AvatarFallback className="bg-white/15 text-white/95 text-sm">{initials}</AvatarFallback>
             </Avatar>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-white">{adminName}</p>
-              <p className="text-xs text-slate-400">{roleLabel}</p>
+              <p className="text-sm font-medium text-white/95">{adminName}</p>
+              <p className="text-xs text-white/70">{roleLabel}</p>
             </div>
           </div>
         </div>
