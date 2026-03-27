@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Loader2, ArrowLeft, CheckCircle } from "lucide-react"
 
 type Step = "email" | "otp" | "reset" | "success"
+const OTP_LENGTH = 8
 
 export function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>("email")
@@ -160,16 +161,16 @@ export function ForgotPasswordForm() {
                   <Input
                     id="otp"
                     type="text"
-                    placeholder="Enter 6-digit code"
+                    placeholder="Enter 8-digit code"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))}
                     required
                     className="bg-input text-center text-lg tracking-widest"
-                    maxLength={6}
+                    maxLength={OTP_LENGTH}
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
+                <Button type="submit" className="w-full" disabled={loading || otp.length !== OTP_LENGTH}>
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

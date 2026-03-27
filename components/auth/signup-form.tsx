@@ -14,7 +14,7 @@ import { normalizeEmail } from "@/lib/admin"
 import { createClient } from "@/lib/supabase/client"
 import { Eye, EyeOff, Loader2, CheckCircle, XCircle, Upload, X, ImageIcon, FileText } from "lucide-react"
 
-const SCHOOL_ID_BUCKET = "report-attachments"
+const SCHOOL_ID_BUCKET = "school-ids"
 const MAX_SCHOOL_ID_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 function isImageSchoolIdFile(file: File) {
@@ -176,7 +176,7 @@ export function SignupForm() {
       const normalizedLastName = formData.lastName.trim()
       const fullName = [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ").trim()
       const schoolIdFileExt = schoolIdFile.name.split(".").pop() || "png"
-      const schoolIdStoragePath = `school-ids/${sanitizeStorageSegment(normalizedEmail)}-${sanitizeStorageSegment(formData.lrn)}-${Date.now()}.${schoolIdFileExt}`
+      const schoolIdStoragePath = `signup/${sanitizeStorageSegment(normalizedEmail)}-${sanitizeStorageSegment(formData.lrn)}-${Date.now()}.${schoolIdFileExt}`
 
       const { data: schoolIdUploadData, error: schoolIdUploadError } = await supabase.storage
         .from(SCHOOL_ID_BUCKET)
@@ -186,8 +186,7 @@ export function SignupForm() {
         throw new Error(schoolIdUploadError?.message || "Failed to upload your School ID attachment.")
       }
 
-      const { data: schoolIdUrlData } = supabase.storage.from(SCHOOL_ID_BUCKET).getPublicUrl(schoolIdStoragePath)
-      const schoolIdUrl = schoolIdUrlData.publicUrl
+      const schoolIdReference = schoolIdStoragePath
 
       const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -199,7 +198,7 @@ export function SignupForm() {
             last_name: normalizedLastName,
             full_name: fullName || normalizedEmail.split("@")[0] || "User",
             student_id: formData.lrn,
-            school_id_url: schoolIdUrl,
+            school_id_url: schoolIdReference,
           },
         },
       })
@@ -223,7 +222,7 @@ export function SignupForm() {
             last_name: normalizedLastName,
             full_name: fullName || normalizedEmail.split("@")[0] || "User",
             student_id: formData.lrn,
-            school_id_url: schoolIdUrl,
+            school_id_url: schoolIdReference,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "id" },

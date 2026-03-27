@@ -49,8 +49,14 @@ CREATE POLICY "Users can view own profile" ON profiles
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
+-- Allow inserts from the current user or from Supabase trigger/service role session contexts.
 CREATE POLICY "Users can insert own profile" ON profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
+  FOR INSERT WITH CHECK (
+    auth.uid() = id
+    OR auth.uid() IS NULL
+    OR auth.role() = 'service_role'
+    OR auth.role() = 'supabase_admin'
+  );
 
 -- RLS Policies for reports
 CREATE POLICY "Users can view own reports" ON reports

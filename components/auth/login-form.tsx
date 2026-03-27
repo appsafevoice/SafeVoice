@@ -111,7 +111,7 @@ export function LoginForm() {
       const errorMessage = err instanceof Error ? err.message : "Invalid email or password"
       if (isEmailVerificationPendingError(errorMessage)) {
         setPendingVerificationEmail(normalizeEmail(formData.email))
-        setError("Email not verified yet. Enter the 6-digit code sent to your email to continue.")
+        setError("Email not verified yet. Enter the 8-digit code sent to your email to continue.")
       } else if (isInvalidCredentialsError(errorMessage)) {
         const supabase = createClient()
         const normalizedEmail = normalizeEmail(formData.email)
@@ -198,7 +198,7 @@ export function LoginForm() {
                     href={`/verify-email?email=${encodeURIComponent(pendingVerificationEmail)}&context=signup`}
                     className="font-medium hover:underline"
                   >
-                    Verify this email with your 6-digit code
+                    Verify this email with your 8-digit code
                   </Link>
                 </div>
               )}

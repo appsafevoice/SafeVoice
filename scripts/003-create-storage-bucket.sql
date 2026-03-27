@@ -17,3 +17,19 @@ CREATE POLICY "Public can view report attachments" ON storage.objects
 CREATE POLICY "Users can delete own attachments" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'report-attachments' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Create a private storage bucket for School ID uploads used during signup
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('school-ids', 'school-ids', false)
+ON CONFLICT (id) DO UPDATE
+SET public = EXCLUDED.public;
+
+-- Allow signup uploads before the user is authenticated.
+-- Restrict writes to the dedicated signup/ prefix inside the private bucket.
+DROP POLICY IF EXISTS "Users can upload signup school IDs" ON storage.objects;
+CREATE POLICY "Users can upload signup school IDs" ON storage.objects
+  FOR INSERT TO public
+  WITH CHECK (
+    bucket_id = 'school-ids'
+    AND (storage.foldername(name))[1] = 'signup'
+  );

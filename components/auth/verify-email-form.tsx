@@ -20,9 +20,7 @@ type VerifyEmailFormProps = {
 }
 
 const RESEND_COOLDOWN_SECONDS = 60
-const MIN_OTP_LENGTH = 6
-const MAX_OTP_LENGTH = 10
-const DEFAULT_VISIBLE_OTP_SLOTS = 8
+const OTP_LENGTH = 8
 
 export function VerifyEmailForm({ initialEmail = "", context = "signup" }: VerifyEmailFormProps) {
   const router = useRouter()
@@ -31,17 +29,14 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [info, setInfo] = useState(
-    initialEmail ? `We sent a 6-digit verification code to ${initialEmail}.` : "",
+    initialEmail ? `We sent a ${OTP_LENGTH}-digit verification code to ${initialEmail}.` : "",
   )
   const [isVerifying, setIsVerifying] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
 
   const accountLabel = context === "admin" ? "admin account" : "account"
-  const visibleOtpSlots = Math.min(
-    MAX_OTP_LENGTH,
-    Math.max(DEFAULT_VISIBLE_OTP_SLOTS, otp.length || 0),
-  )
+  const visibleOtpSlots = OTP_LENGTH
 
   useEffect(() => {
     if (resendCooldown <= 0) {
@@ -85,8 +80,8 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
       setError("Email is required.")
       return
     }
-    if (otp.length < MIN_OTP_LENGTH || otp.length > MAX_OTP_LENGTH) {
-      setError("Enter the verification code from your email.")
+    if (otp.length !== OTP_LENGTH) {
+      setError(`Enter the ${OTP_LENGTH}-digit verification code from your email.`)
       return
     }
 
@@ -96,7 +91,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         email: normalizedEmail,
         token: otp,
-        type: "signup",
+        type: "email",
       })
 
       if (verifyError) {
@@ -144,7 +139,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
       setOtp("")
       setResendCooldown(RESEND_COOLDOWN_SECONDS)
       setInfo(
-        `A new 6-digit verification code was requested for ${normalizedEmail}. Please allow up to a minute for the email to appear, and check Spam or Promotions if you do not see it.`,
+        `A new ${OTP_LENGTH}-digit verification code was requested for ${normalizedEmail}. Please allow up to a minute for the email to appear, and check Spam or Promotions if you do not see it.`,
       )
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to resend verification code."
@@ -170,7 +165,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold">Verify Your Email</CardTitle>
             <CardDescription>
-              Enter the 6-digit code Supabase sent to finish setting up your {accountLabel}.
+              Enter the {OTP_LENGTH}-digit code Supabase sent to finish setting up your {accountLabel}.
             </CardDescription>
           </CardHeader>
 
@@ -196,10 +191,10 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
                 <Label htmlFor="otp">Verification Code</Label>
                 <InputOTP
                   id="otp"
-                  maxLength={MAX_OTP_LENGTH}
+                  maxLength={OTP_LENGTH}
                   pattern={REGEXP_ONLY_DIGITS}
                   value={otp}
-                  onChange={(value) => setOtp(value.replace(/\D/g, "").slice(0, MAX_OTP_LENGTH))}
+                  onChange={(value) => setOtp(value.replace(/\D/g, "").slice(0, OTP_LENGTH))}
                   containerClassName="justify-center"
                 >
                   <InputOTPGroup>
@@ -213,7 +208,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isVerifying || otp.length < MIN_OTP_LENGTH || otp.length > MAX_OTP_LENGTH}
+                disabled={isVerifying || otp.length !== OTP_LENGTH}
               >
                 {isVerifying ? (
                   <>

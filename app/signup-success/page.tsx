@@ -20,7 +20,7 @@ export default function SignupSuccessPage() {
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold">Check your email</CardTitle>
             <CardDescription>
-              We sent you a 6-digit verification code. Enter it on the verification screen to activate your account.
+              We sent you an 8-digit verification code. Enter it on the verification screen to activate your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
