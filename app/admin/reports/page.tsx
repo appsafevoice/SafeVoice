@@ -3,6 +3,16 @@
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,13 +20,13 @@ import { Input } from "@/components/ui/input"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
+import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 import { buildPrintLoadingHtml, waitForNextPaint } from "@/lib/browser-processing"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
 import { markAdminReportAsRead } from "@/lib/admin/report-notifications"
-import { Search, Eye, Calendar, User, FileText, Printer } from "lucide-react"
-
-
+import { Search, Eye, Calendar, User, FileText, Printer, Loader2, Trash2 } from "lucide-react"
 
 interface Report {
   id: string
@@ -48,15 +58,31 @@ export default function AdminReportsPage() {
   const [startDateFilter, setStartDateFilter] = useState("")
   const [endDateFilter, setEndDateFilter] = useState("")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [reportPendingDelete, setReportPendingDelete] = useState<Report | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [printLoadingState, setPrintLoadingState] = useState<PrintLoadingState | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+  const [processingReportId, setProcessingReportId] = useState<string | null>(null)
   const openedReportIdFromQuery = useRef<string | null>(null)
   const supabase = createBrowserClient()
+  const canDeleteReports = isSuperAdminEmail(currentUserEmail)
 
   useEffect(() => {
     if (!selectedReport) return
     markAdminReportAsRead(selectedReport.id, selectedReport.created_at)
   }, [selectedReport])
+
+  useEffect(() => {
+    const loadCurrentUserEmail = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      setCurrentUserEmail(user?.email ? normalizeEmail(user.email) : null)
+    }
+
+    void loadCurrentUserEmail()
+  }, [supabase])
 
   useEffect(() => {
     const statusFromQuery = searchParams.get("status")
@@ -129,6 +155,13 @@ export default function AdminReportsPage() {
     params.delete("reportId")
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const closeReportDialog = () => {
+    setSelectedReport(null)
+    setReportPendingDelete(null)
+    openedReportIdFromQuery.current = null
+    clearReportIdFromUrl()
   }
 
   useEffect(() => {
@@ -238,6 +271,63 @@ export default function AdminReportsPage() {
         setSelectedReport({ ...selectedReport, status: newStatus })
       }
     }
+  }
+
+  const deleteReport = async (report: Report) => {
+    if (!canDeleteReports) {
+      toast({
+        variant: "destructive",
+        title: "Delete not allowed",
+        description: "Only the Super Admin can delete reports.",
+      })
+      setReportPendingDelete(null)
+      return
+    }
+
+    setProcessingReportId(report.id)
+
+    const { data, error } = await supabase.from("reports").delete().eq("id", report.id).select("id").maybeSingle()
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description:
+          error.code === "42501"
+            ? "Only the Super Admin can delete reports."
+            : error.message || "Failed to delete the selected report.",
+      })
+      setProcessingReportId(null)
+      return
+    }
+
+    if (!data) {
+      toast({
+        variant: "destructive",
+        title: "Report not found",
+        description: "This report may have already been deleted or is no longer available.",
+      })
+      setReportPendingDelete(null)
+      setProcessingReportId(null)
+      if (selectedReport?.id === report.id || openedReportIdFromQuery.current === report.id) {
+        closeReportDialog()
+      }
+      return
+    }
+
+    setReports((prev) => prev.filter((item) => item.id !== report.id))
+    setFilteredReports((prev) => prev.filter((item) => item.id !== report.id))
+    setReportPendingDelete(null)
+    setProcessingReportId(null)
+
+    if (selectedReport?.id === report.id || openedReportIdFromQuery.current === report.id) {
+      closeReportDialog()
+    }
+
+    toast({
+      title: "Report deleted",
+      description: "The report and its related comments were removed.",
+    })
   }
 
   const getStatusColor = (status: string) => {
@@ -447,6 +537,7 @@ export default function AdminReportsPage() {
 
   const bullyingTypes = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
   const reportInsights = selectedReport ? buildReportInsights(selectedReport) : []
+  const selectedReportIsProcessing = selectedReport ? processingReportId === selectedReport.id : false
 
   return (
     <AdminLayout>
@@ -578,9 +669,7 @@ export default function AdminReportsPage() {
           open={!!selectedReport}
           onOpenChange={(open) => {
             if (open) return
-            setSelectedReport(null)
-            openedReportIdFromQuery.current = null
-            clearReportIdFromUrl()
+            closeReportDialog()
           }}
         >
           <DialogContent className="h-[min(90vh,48rem)] w-[min(96vw,90rem)] max-w-[min(96vw,90rem)] sm:max-w-[min(96vw,90rem)] overflow-hidden bg-slate-800 border-slate-700 p-0 gap-0 flex flex-col [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:text-white">
@@ -597,12 +686,27 @@ export default function AdminReportsPage() {
             {selectedReport && (
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
                 <div className="space-y-4">
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    {canDeleteReports && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setReportPendingDelete(selectedReport)}
+                        disabled={selectedReportIsProcessing || isPrinting}
+                      >
+                        {selectedReportIsProcessing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
+                        Delete Report
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => handlePrintReport(selectedReport)}
-                      disabled={isPrinting}
+                      disabled={isPrinting || selectedReportIsProcessing}
                       className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600"
                     >
                       <Printer className="w-4 h-4 mr-2" />
@@ -620,6 +724,7 @@ export default function AdminReportsPage() {
                       <p className="text-xs text-slate-400 mb-1">Status</p>
                       <Select
                         value={selectedReport.status || "pending"}
+                        disabled={selectedReportIsProcessing}
                         onValueChange={(value) => updateStatus(selectedReport.id, value)}
                       >
                         <SelectTrigger className="w-full max-w-xs bg-slate-700/50 border-slate-600 text-white">
@@ -719,6 +824,43 @@ export default function AdminReportsPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog
+          open={!!reportPendingDelete}
+          onOpenChange={(open) => {
+            if (open) return
+            setReportPendingDelete(null)
+          }}
+        >
+          <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this report?</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-300">
+                {reportPendingDelete
+                  ? `This will permanently delete the report from ${reportPendingDelete.reporter_name || "Unknown Student"} and remove its comment thread. This action cannot be undone.`
+                  : "This action cannot be undone."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={processingReportId === reportPendingDelete?.id}
+                className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600 hover:text-white"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={!reportPendingDelete || processingReportId === reportPendingDelete?.id}
+                onClick={() => {
+                  if (!reportPendingDelete) return
+                  void deleteReport(reportPendingDelete)
+                }}
+                className="bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500/40"
+              >
+                Confirm Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   )

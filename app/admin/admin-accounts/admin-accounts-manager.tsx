@@ -233,10 +233,16 @@ export function AdminAccountsManager() {
 
     setProcessingAccountId(account.id)
 
-    const { error } = await supabase.from("admin_accounts").delete().eq("id", account.id)
+    const { error } = await supabase.rpc("super_admin_delete_admin_account", {
+      p_admin_account_id: account.id,
+    })
 
     if (error) {
-      if (error.code === "42501") {
+      if (error.code === "42883" || error.code === "PGRST202") {
+        setErrorMessage(
+          "Database is missing the synchronized admin deletion function. Apply the latest Supabase migrations and try again.",
+        )
+      } else if (error.code === "42501") {
         setErrorMessage("Only the Super Admin can remove Admin accounts.")
       } else {
         setErrorMessage(error.message || "Failed to remove admin account.")
@@ -245,7 +251,7 @@ export function AdminAccountsManager() {
       return
     }
 
-    setSuccessMessage("Admin account removed.")
+    setSuccessMessage("Admin account removed from the database and Supabase Authentication.")
     setTimeout(() => setSuccessMessage(""), 2000)
     await fetchAccounts()
     setProcessingAccountId(null)
@@ -261,7 +267,7 @@ export function AdminAccountsManager() {
             </div>
             <div>
               <CardTitle className="text-white">Admin Management</CardTitle>
-              <p className="text-sm text-slate-400">Super Admin-only tools for creating, disabling, and removing Admin logins</p>
+              <p className="text-sm text-slate-400">Super Admin-only tools for creating, disabling, and removing Admin logins with synced auth cleanup</p>
             </div>
           </div>
 

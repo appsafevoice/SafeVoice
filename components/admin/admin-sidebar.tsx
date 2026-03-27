@@ -30,7 +30,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
   const isSuperAdmin = isSuperAdminEmail(adminEmail)
   const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
   const navItems = isSuperAdmin
-    ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Admin Management", icon: UserCog }]
+    ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Account Management", icon: UserCog }]
     : baseNavItems
 
   const handleLogout = async () => {
