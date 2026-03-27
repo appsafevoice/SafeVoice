@@ -7,8 +7,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { buildPrintLoadingHtml, waitForNextPaint } from "@/lib/browser-processing"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
 import { markAdminReportAsRead } from "@/lib/admin/report-notifications"
@@ -28,6 +30,11 @@ interface Report {
   attachments: string[] | null
 }
 
+interface PrintLoadingState {
+  progress: number
+  description: string
+}
+
 export default function AdminReportsPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -42,6 +49,7 @@ export default function AdminReportsPage() {
   const [endDateFilter, setEndDateFilter] = useState("")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
+  const [printLoadingState, setPrintLoadingState] = useState<PrintLoadingState | null>(null)
   const openedReportIdFromQuery = useRef<string | null>(null)
   const supabase = createBrowserClient()
 
@@ -317,82 +325,124 @@ export default function AdminReportsPage() {
   }
 
   const handlePrintReport = async (report: Report) => {
-    setIsPrinting(true)
-
-    const attachmentsHtml =
-      report.attachments && report.attachments.length > 0
-        ? `<div>${report.attachments
-            .map((url, i) =>
-              isImageAttachment(url)
-                ? `
-                  <div style="margin-bottom: 12px;">
-                    <div style="font-size: 12px; color: #555; margin-bottom: 4px;">Attachment ${i + 1}</div>
-                    <img src="${url}" alt="Attachment ${i + 1}" style="max-width: 100%; max-height: 320px; border: 1px solid #ddd; border-radius: 6px;" />
-                  </div>
-                `
-                : `
-                  <div style="margin-bottom: 8px;">
-                    <span style="font-size: 12px; color: #555;">Attachment ${i + 1}: Non-image attachment</span>
-                  </div>
-                `,
-            )
-            .join("")}</div>`
-        : `<p class="muted">No attachments.</p>`
-
-    const printHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Report ${report.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #111; margin: 24px; line-height: 1.45; }
-            h1 { margin: 0 0 8px 0; font-size: 22px; }
-            h2 { margin: 24px 0 8px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-            .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 13px; }
-            .field { margin: 4px 0; }
-            .label { font-weight: bold; display: inline-block; min-width: 130px; }
-            .box { border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa; }
-            .muted { color: #666; }
-            .comment { border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
-            .comment-meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 4px; }
-            .comment-content { font-size: 13px; }
-            @media print { body { margin: 12mm; } a { color: #111; text-decoration: none; } }
-          </style>
-        </head>
-        <body>
-          <h1>SafeVoice Report Details</h1>
-          <div class="field"><span class="label">Report ID:</span>${report.id}</div>
-          <div class="meta">
-            <div class="field"><span class="label">Submitted:</span>${new Date(report.created_at).toLocaleString()}</div>
-            <div class="field"><span class="label">Incident Date:</span>${report.incident_date ? new Date(report.incident_date).toLocaleDateString() : "Not specified"}</div>
-            <div class="field"><span class="label">Reporter:</span>${escapeHtml(report.reporter_name || "Unknown Student")}</div>
-            <div class="field"><span class="label">Type:</span>${escapeHtml(report.bullying_type || "Unknown")}</div>
-            <div class="field"><span class="label">Status:</span>${escapeHtml(report.status || "pending")}</div>
-          </div>
-
-          <h2>Incident Details</h2>
-          <div class="box">${escapeHtml(report.details || "").replace(/\n/g, "<br/>") || '<span class="muted">No details provided.</span>'}</div>
-
-          <h2>Attachments</h2>
-          ${attachmentsHtml}
-        </body>
-      </html>
-    `
-
+    // Open the print window before yielding so popup blockers still treat this as a user action.
     const printWindow = window.open("", "_blank")
-    if (!printWindow) {
-      setIsPrinting(false)
-      return
-    }
+    if (!printWindow) return
 
     printWindow.document.open()
-    printWindow.document.write(printHtml)
+    printWindow.document.write(
+      buildPrintLoadingHtml({
+        title: "Preparing report details",
+        description: "Compiling the selected report and opening the print preview.",
+      }),
+    )
     printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
 
-    setIsPrinting(false)
+    setIsPrinting(true)
+    setPrintLoadingState({
+      progress: 10,
+      description: "Opening a print workspace for this report.",
+    })
+
+    try {
+      // Yield between stages so React can paint the loading screen before each chunk of work.
+      await waitForNextPaint()
+
+      setPrintLoadingState({
+        progress: 35,
+        description: "Compiling attachments and report details.",
+      })
+      await waitForNextPaint()
+
+      const attachmentsHtml =
+        report.attachments && report.attachments.length > 0
+          ? `<div>${report.attachments
+              .map((url, i) =>
+                isImageAttachment(url)
+                  ? `
+                    <div style="margin-bottom: 12px;">
+                      <div style="font-size: 12px; color: #555; margin-bottom: 4px;">Attachment ${i + 1}</div>
+                      <img src="${url}" alt="Attachment ${i + 1}" style="max-width: 100%; max-height: 320px; border: 1px solid #ddd; border-radius: 6px;" />
+                    </div>
+                  `
+                  : `
+                    <div style="margin-bottom: 8px;">
+                      <span style="font-size: 12px; color: #555;">Attachment ${i + 1}: Non-image attachment</span>
+                    </div>
+                  `,
+              )
+              .join("")}</div>`
+          : `<p class="muted">No attachments.</p>`
+
+      setPrintLoadingState({
+        progress: 68,
+        description: "Building the printable report layout.",
+      })
+      await waitForNextPaint()
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Report ${report.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #111; margin: 24px; line-height: 1.45; }
+              h1 { margin: 0 0 8px 0; font-size: 22px; }
+              h2 { margin: 24px 0 8px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+              .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 13px; }
+              .field { margin: 4px 0; }
+              .label { font-weight: bold; display: inline-block; min-width: 130px; }
+              .box { border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fafafa; }
+              .muted { color: #666; }
+              .comment { border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+              .comment-meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 4px; }
+              .comment-content { font-size: 13px; }
+              @media print { body { margin: 12mm; } a { color: #111; text-decoration: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>SafeVoice Report Details</h1>
+            <div class="field"><span class="label">Report ID:</span>${report.id}</div>
+            <div class="meta">
+              <div class="field"><span class="label">Submitted:</span>${new Date(report.created_at).toLocaleString()}</div>
+              <div class="field"><span class="label">Incident Date:</span>${report.incident_date ? new Date(report.incident_date).toLocaleDateString() : "Not specified"}</div>
+              <div class="field"><span class="label">Reporter:</span>${escapeHtml(report.reporter_name || "Unknown Student")}</div>
+              <div class="field"><span class="label">Type:</span>${escapeHtml(report.bullying_type || "Unknown")}</div>
+              <div class="field"><span class="label">Status:</span>${escapeHtml(report.status || "pending")}</div>
+            </div>
+
+            <h2>Incident Details</h2>
+            <div class="box">${escapeHtml(report.details || "").replace(/\n/g, "<br/>") || '<span class="muted">No details provided.</span>'}</div>
+
+            <h2>Attachments</h2>
+            ${attachmentsHtml}
+          </body>
+        </html>
+      `
+
+      setPrintLoadingState({
+        progress: 90,
+        description: "Opening the print preview.",
+      })
+      await waitForNextPaint()
+
+      printWindow.document.open()
+      printWindow.document.write(printHtml)
+      printWindow.document.close()
+      printWindow.focus()
+
+      setPrintLoadingState({
+        progress: 100,
+        description: "Print preview is ready.",
+      })
+      await waitForNextPaint()
+
+      printWindow.print()
+    } finally {
+      setIsPrinting(false)
+      setPrintLoadingState(null)
+    }
   }
 
   const bullyingTypes = [...new Set(reports.map((r) => r.bullying_type).filter(Boolean))]
@@ -400,6 +450,14 @@ export default function AdminReportsPage() {
 
   return (
     <AdminLayout>
+      {printLoadingState && (
+        <LoadingScreen
+          mode="overlay"
+          title="Preparing report details"
+          description={printLoadingState.description}
+          progress={printLoadingState.progress}
+        />
+      )}
       <div className="space-y-6">
         {/* Header */}
         <div>

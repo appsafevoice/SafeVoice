@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { buildPrintLoadingHtml, waitForNextPaint } from "@/lib/browser-processing"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
   ADMIN_CHART_AXIS,
@@ -52,6 +54,11 @@ type ExportSectionKey =
   | "descriptiveAnalysis"
 
 type ExportSectionsState = Record<ExportSectionKey, boolean>
+
+interface ExportLoadingState {
+  progress: number
+  description: string
+}
 
 export default function AdminAnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([])
@@ -110,6 +117,7 @@ export default function AdminAnalyticsPage() {
     descriptiveAnalysis: true,
   }))
   const [isExporting, setIsExporting] = useState(false)
+  const [exportLoadingState, setExportLoadingState] = useState<ExportLoadingState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
 
@@ -491,137 +499,179 @@ export default function AdminAnalyticsPage() {
   const handlePrintDataReport = async () => {
     if (!isExportRangeValid || !hasSelectedExportSections) return
 
-    setIsExporting(true)
-
-    const summarySection = `
-      <h2>Summary Statistics</h2>
-      <div class="summary-grid">
-        <div class="summary-item">
-          <div class="label">Total Reports</div>
-          <div class="value">${exportSummary.total}</div>
-        </div>
-        <div class="summary-item">
-          <div class="label">Pending</div>
-          <div class="value">${exportSummary.pending}</div>
-        </div>
-        <div class="summary-item">
-          <div class="label">In Progress</div>
-          <div class="value">${exportSummary.inProgress}</div>
-        </div>
-        <div class="summary-item">
-          <div class="label">Resolved</div>
-          <div class="value">${exportSummary.resolved}</div>
-        </div>
-      </div>
-    `
-
-    const monthlyRows = exportMonthlyTrend
-      .map((row) => `<tr><td>${row.month}</td><td>${row.reports}</td></tr>`)
-      .join("")
-    const monthlySection = `
-      <h2>Monthly Trend</h2>
-      ${exportMonthlyTrend.length > 0 ? `<table><thead><tr><th>Month</th><th>Reports</th></tr></thead><tbody>${monthlyRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
-    `
-
-    const typeRows = exportTypeDistribution
-      .map((row) => {
-        const share = exportSummary.total ? ((row.value / exportSummary.total) * 100).toFixed(0) : "0"
-        return `<tr><td>${escapeHtml(row.name)}</td><td>${row.value}</td><td>${share}%</td></tr>`
-      })
-      .join("")
-    const typeSection = `
-      <h2>Incident Categories</h2>
-      ${exportTypeDistribution.length > 0 ? `<table><thead><tr><th>Type</th><th>Reports</th><th>Share</th></tr></thead><tbody>${typeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
-    `
-
-    const dailyRows = exportDailyActivity.rows
-      .map((row) => `<tr><td>${row.date}</td><td>${row.reports}</td></tr>`)
-      .join("")
-    const dailyNote = exportDailyActivity.isTruncated ? "<p class=\"muted\">Showing first 120 days.</p>" : ""
-    const dailySection = `
-      <h2>Daily Activity</h2>
-      ${exportDailyActivity.rows.length > 0 ? `<table><thead><tr><th>Date</th><th>Reports</th></tr></thead><tbody>${dailyRows}</tbody></table>${dailyNote}` : "<p class=\"muted\">No data for selected timeline.</p>"}
-    `
-
-    const typeOverTimeHeader = exportTypeKeys.map((type) => `<th>${escapeHtml(type)}</th>`).join("")
-    const typeOverTimeRows = exportTypeOverTime
-      .map((row) => {
-        const cells = exportTypeKeys.map((type) => `<td>${row[type] ?? 0}</td>`).join("")
-        return `<tr><td>${row.month}</td>${cells}</tr>`
-      })
-      .join("")
-    const typeOverTimeSection = `
-      <h2>Incident Types Over Time</h2>
-      ${exportTypeOverTime.length > 0 ? `<table><thead><tr><th>Month</th>${typeOverTimeHeader}</tr></thead><tbody>${typeOverTimeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
-    `
-
-    const analysisItems = descriptiveAnalysis
-      .map((item) => `<li>${escapeHtml(item)}</li>`)
-      .join("")
-    const analysisSection = `
-      <h2>Descriptive Analysis</h2>
-      <ul>${analysisItems}</ul>
-    `
-
-    const sectionsHtml = [
-      exportSections.summary ? summarySection : "",
-      exportSections.monthlyTrend ? monthlySection : "",
-      exportSections.typeDistribution ? typeSection : "",
-      exportSections.dailyActivity ? dailySection : "",
-      exportSections.typeOverTime ? typeOverTimeSection : "",
-      exportSections.descriptiveAnalysis ? analysisSection : "",
-    ]
-      .filter(Boolean)
-      .join("")
-
-    const printHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>SafeVoice Data Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #111; margin: 24px; line-height: 1.45; }
-            h1 { margin: 0 0 6px 0; font-size: 22px; }
-            h2 { margin: 24px 0 8px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-            .muted { color: #666; font-size: 12px; }
-            .meta { margin-bottom: 16px; font-size: 13px; color: #444; }
-            .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 8px; }
-            .summary-item { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fafafa; }
-            .summary-item .label { font-size: 12px; color: #666; }
-            .summary-item .value { font-size: 18px; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-            th { background: #f3f4f6; }
-            ul { padding-left: 20px; margin-top: 8px; }
-            li { margin-bottom: 6px; }
-            @media print { body { margin: 12mm; } a { color: #111; text-decoration: none; } }
-          </style>
-        </head>
-        <body>
-          <h1>SafeVoice Data Report</h1>
-          <div class="meta">
-            <div><strong>Timeline:</strong> ${escapeHtml(exportRangeLabel)}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
-          </div>
-          ${sectionsHtml}
-        </body>
-      </html>
-    `
-
+    // Open the print window before yielding so popup blockers still treat this as a user action.
     const printWindow = window.open("", "_blank")
-    if (!printWindow) {
-      setIsExporting(false)
-      return
-    }
+    if (!printWindow) return
 
     printWindow.document.open()
-    printWindow.document.write(printHtml)
+    printWindow.document.write(
+      buildPrintLoadingHtml({
+        title: "Preparing data report",
+        description: "Compiling the selected sections and opening the print preview.",
+      }),
+    )
     printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
 
-    setIsExporting(false)
+    setIsExporting(true)
+    setExportLoadingState({
+      progress: 8,
+      description: "Opening a print workspace for the export.",
+    })
+
+    try {
+      // Yield between stages so React can paint the loading screen before each chunk of work.
+      await waitForNextPaint()
+
+      setExportLoadingState({
+        progress: 28,
+        description: "Compiling the selected report sections.",
+      })
+      await waitForNextPaint()
+
+      const summarySection = `
+        <h2>Summary Statistics</h2>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="label">Total Reports</div>
+            <div class="value">${exportSummary.total}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Pending</div>
+            <div class="value">${exportSummary.pending}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">In Progress</div>
+            <div class="value">${exportSummary.inProgress}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Resolved</div>
+            <div class="value">${exportSummary.resolved}</div>
+          </div>
+        </div>
+      `
+
+      const monthlyRows = exportMonthlyTrend
+        .map((row) => `<tr><td>${row.month}</td><td>${row.reports}</td></tr>`)
+        .join("")
+      const monthlySection = `
+        <h2>Monthly Trend</h2>
+        ${exportMonthlyTrend.length > 0 ? `<table><thead><tr><th>Month</th><th>Reports</th></tr></thead><tbody>${monthlyRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+      `
+
+      const typeRows = exportTypeDistribution
+        .map((row) => {
+          const share = exportSummary.total ? ((row.value / exportSummary.total) * 100).toFixed(0) : "0"
+          return `<tr><td>${escapeHtml(row.name)}</td><td>${row.value}</td><td>${share}%</td></tr>`
+        })
+        .join("")
+      const typeSection = `
+        <h2>Incident Categories</h2>
+        ${exportTypeDistribution.length > 0 ? `<table><thead><tr><th>Type</th><th>Reports</th><th>Share</th></tr></thead><tbody>${typeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+      `
+
+      const dailyRows = exportDailyActivity.rows
+        .map((row) => `<tr><td>${row.date}</td><td>${row.reports}</td></tr>`)
+        .join("")
+      const dailyNote = exportDailyActivity.isTruncated ? "<p class=\"muted\">Showing first 120 days.</p>" : ""
+      const dailySection = `
+        <h2>Daily Activity</h2>
+        ${exportDailyActivity.rows.length > 0 ? `<table><thead><tr><th>Date</th><th>Reports</th></tr></thead><tbody>${dailyRows}</tbody></table>${dailyNote}` : "<p class=\"muted\">No data for selected timeline.</p>"}
+      `
+
+      const typeOverTimeHeader = exportTypeKeys.map((type) => `<th>${escapeHtml(type)}</th>`).join("")
+      const typeOverTimeRows = exportTypeOverTime
+        .map((row) => {
+          const cells = exportTypeKeys.map((type) => `<td>${row[type] ?? 0}</td>`).join("")
+          return `<tr><td>${row.month}</td>${cells}</tr>`
+        })
+        .join("")
+      const typeOverTimeSection = `
+        <h2>Incident Types Over Time</h2>
+        ${exportTypeOverTime.length > 0 ? `<table><thead><tr><th>Month</th>${typeOverTimeHeader}</tr></thead><tbody>${typeOverTimeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
+      `
+
+      const analysisItems = descriptiveAnalysis
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("")
+      const analysisSection = `
+        <h2>Descriptive Analysis</h2>
+        <ul>${analysisItems}</ul>
+      `
+
+      const sectionsHtml = [
+        exportSections.summary ? summarySection : "",
+        exportSections.monthlyTrend ? monthlySection : "",
+        exportSections.typeDistribution ? typeSection : "",
+        exportSections.dailyActivity ? dailySection : "",
+        exportSections.typeOverTime ? typeOverTimeSection : "",
+        exportSections.descriptiveAnalysis ? analysisSection : "",
+      ]
+        .filter(Boolean)
+        .join("")
+
+      setExportLoadingState({
+        progress: 62,
+        description: "Building the printable document.",
+      })
+      await waitForNextPaint()
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>SafeVoice Data Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #111; margin: 24px; line-height: 1.45; }
+              h1 { margin: 0 0 6px 0; font-size: 22px; }
+              h2 { margin: 24px 0 8px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+              .muted { color: #666; font-size: 12px; }
+              .meta { margin-bottom: 16px; font-size: 13px; color: #444; }
+              .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 8px; }
+              .summary-item { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fafafa; }
+              .summary-item .label { font-size: 12px; color: #666; }
+              .summary-item .value { font-size: 18px; font-weight: bold; }
+              table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+              th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+              th { background: #f3f4f6; }
+              ul { padding-left: 20px; margin-top: 8px; }
+              li { margin-bottom: 6px; }
+              @media print { body { margin: 12mm; } a { color: #111; text-decoration: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>SafeVoice Data Report</h1>
+            <div class="meta">
+              <div><strong>Timeline:</strong> ${escapeHtml(exportRangeLabel)}</div>
+              <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+            </div>
+            ${sectionsHtml}
+          </body>
+        </html>
+      `
+
+      setExportLoadingState({
+        progress: 88,
+        description: "Opening the print preview.",
+      })
+      await waitForNextPaint()
+
+      printWindow.document.open()
+      printWindow.document.write(printHtml)
+      printWindow.document.close()
+      printWindow.focus()
+
+      setExportLoadingState({
+        progress: 100,
+        description: "Print preview is ready.",
+      })
+      await waitForNextPaint()
+
+      printWindow.print()
+    } finally {
+      setIsExporting(false)
+      setExportLoadingState(null)
+    }
   }
 
   if (isLoading) {
@@ -636,6 +686,14 @@ export default function AdminAnalyticsPage() {
 
   return (
     <AdminLayout>
+      {exportLoadingState && (
+        <LoadingScreen
+          mode="overlay"
+          title="Preparing data report"
+          description={exportLoadingState.description}
+          progress={exportLoadingState.progress}
+        />
+      )}
       <div className="space-y-6">
         {/* Header */}
         <div>
