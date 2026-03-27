@@ -209,7 +209,11 @@ export function SignupForm() {
         throw authError
       }
 
-      if (signUpData.user?.id) {
+      // If email confirmation is required, the session may be null here.
+      // In that case, we cannot write directly to profiles via client-side upsert because RLS
+      // requires auth.uid() to match id. The `on_auth_user_created` trigger in DB will
+      // create the profile row for the user automatically.
+      if (signUpData.user?.id && signUpData.session) {
         await supabase.from("profiles").upsert(
           {
             id: signUpData.user.id,
