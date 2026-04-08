@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { AddToHomeScreenPrompt } from "@/components/pwa/add-to-home-screen-prompt"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
@@ -13,10 +14,15 @@ export const metadata: Metadata = {
   description: "A safe platform for students to report bullying incidents within schools",
   generator: "v0.app",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SafeVoice",
+  },
   icons: {
-    icon: [{ url: "/images/safe-voice-logo.png", type: "image/png" }],
-    shortcut: "/images/safe-voice-logo.png",
-    apple: "/images/safe-voice-logo.png",
+    icon: [{ url: "/icon-192.png", type: "image/png", sizes: "192x192" }],
+    shortcut: "/icon-192.png",
+    apple: "/apple-icon.png",
   },
 }
 
@@ -37,6 +43,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased min-h-screen`}>
         {children}
+        <AddToHomeScreenPrompt />
         <Toaster />
         <Analytics />
       </body>

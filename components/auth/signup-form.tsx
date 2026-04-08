@@ -17,6 +17,11 @@ import { Eye, EyeOff, Loader2, CheckCircle, XCircle, Upload, X, ImageIcon, FileT
 const SCHOOL_ID_BUCKET = "school-ids"
 const MAX_SCHOOL_ID_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
+type SignupDuplicateCheck = {
+  email_exists: boolean
+  lrn_exists: boolean
+}
+
 function isImageSchoolIdFile(file: File) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name)
 }
@@ -31,6 +36,33 @@ function isAcceptedSchoolIdFile(file: File) {
 
 function sanitizeStorageSegment(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "student"
+}
+
+function isMissingSignupDuplicateCheckError(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+  return normalizedMessage.includes("signup_check_duplicates") || normalizedMessage.includes("schema cache")
+}
+
+function getSignupErrorMessage(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+
+  if (
+    normalizedMessage.includes("email already existed") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("email address already exists") ||
+    normalizedMessage.includes("profiles_email_lower_uniq")
+  ) {
+    return "Email already existed"
+  }
+
+  if (
+    normalizedMessage.includes("lrn already existed") ||
+    normalizedMessage.includes("profiles_lrn_normalized_uniq")
+  ) {
+    return "LRN already existed"
+  }
+
+  return message || "An error occurred during signup"
 }
 
 export function SignupForm() {
@@ -178,6 +210,36 @@ export function SignupForm() {
       const schoolIdFileExt = schoolIdFile.name.split(".").pop() || "png"
       const schoolIdStoragePath = `signup/${sanitizeStorageSegment(normalizedEmail)}-${sanitizeStorageSegment(formData.lrn)}-${Date.now()}.${schoolIdFileExt}`
 
+      const { data: duplicateCheckRows, error: duplicateCheckError } = await supabase.rpc("signup_check_duplicates", {
+        p_email: normalizedEmail,
+        p_lrn: formData.lrn,
+      })
+
+      if (duplicateCheckError) {
+        if (!isMissingSignupDuplicateCheckError(duplicateCheckError.message)) {
+          throw duplicateCheckError
+        }
+      } else {
+        const duplicateCheck = Array.isArray(duplicateCheckRows)
+          ? (duplicateCheckRows[0] as SignupDuplicateCheck | undefined)
+          : undefined
+
+        if (duplicateCheck?.email_exists && duplicateCheck?.lrn_exists) {
+          setError("Email and LRN already existed")
+          return
+        }
+
+        if (duplicateCheck?.email_exists) {
+          setError("Email already existed")
+          return
+        }
+
+        if (duplicateCheck?.lrn_exists) {
+          setError("LRN already existed")
+          return
+        }
+      }
+
       const { data: schoolIdUploadData, error: schoolIdUploadError } = await supabase.storage
         .from(SCHOOL_ID_BUCKET)
         .upload(schoolIdStoragePath, schoolIdFile)
@@ -238,7 +300,7 @@ export function SignupForm() {
       router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}&context=signup`)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred during signup"
-      setError(errorMessage)
+      setError(getSignupErrorMessage(errorMessage))
     } finally {
       setLoading(false)
     }
@@ -318,7 +380,7 @@ export function SignupForm() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your.email@school.edu"
+                  placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required

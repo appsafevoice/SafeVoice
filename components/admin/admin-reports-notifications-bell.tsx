@@ -6,7 +6,6 @@ import { Bell, Heart, MessageSquare } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { ToastAction } from "@/components/ui/toast"
 import { toast } from "@/hooks/use-toast"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -617,7 +616,7 @@ export function AdminReportsNotificationsBell() {
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="w-96 bg-slate-800 border-slate-700 text-white p-0"
+        className="flex h-[36rem] w-96 max-h-[calc(100dvh-5rem)] flex-col overflow-hidden border-slate-700 bg-slate-800 p-0 text-white"
       >
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700">
           <div className="min-w-0">
@@ -641,8 +640,8 @@ export function AdminReportsNotificationsBell() {
         {reports.length === 0 && activity.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-slate-400">No notifications yet</div>
         ) : (
-          <ScrollArea className="max-h-[420px]">
-            <div className="p-2 space-y-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 touch-pan-y">
+            <div className="space-y-3 pr-1">
               <div>
                 <p className="px-1 text-[11px] font-semibold text-slate-300 uppercase tracking-wide">Activity</p>
                 {activity.length === 0 ? (
@@ -753,7 +752,7 @@ export function AdminReportsNotificationsBell() {
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         )}
       </PopoverContent>
     </Popover>

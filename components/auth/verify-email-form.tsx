@@ -179,7 +179,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your.email@school.edu"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

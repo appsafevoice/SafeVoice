@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
-import { normalizeEmail } from "@/lib/admin"
+import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 type PendingAdminFirstLogin = {
@@ -51,6 +51,24 @@ function isMissingAdminFirstLoginSetupError(code?: string, message?: string) {
     normalizedMessage.includes("admin_accounts_prepare_first_login") ||
     normalizedMessage.includes("schema cache")
   )
+}
+
+function getFriendlyAdminLoginError() {
+  return "This admin account is not ready to sign in yet. Please try again later."
+}
+
+function getFriendlyReservedAdminSyncError() {
+  return "This admin account is still being set up. Please try again in a moment."
+}
+
+function getFriendlyAdminVerificationError(message?: string) {
+  const normalizedMessage = (message || "").toLowerCase()
+
+  if (isEmailRateLimitError(normalizedMessage)) {
+    return "Too many attempts were made. Please wait a bit, then try again."
+  }
+
+  return "We couldn't continue admin sign in right now. Please try again."
 }
 
 export function LoginForm() {
@@ -125,11 +143,9 @@ export function LoginForm() {
 
         if (pendingAdminError) {
           if (isMissingAdminFirstLoginSetupError(pendingAdminError.code, pendingAdminError.message)) {
-            setError(
-              "Admin first-login setup is missing in Supabase. Apply migration `20260325_defer_admin_otp_until_first_login.sql` and try again.",
-            )
+            setError(getFriendlyAdminLoginError())
           } else {
-            setError(pendingAdminError.message || "Unable to prepare the admin login.")
+            setError(getFriendlyAdminVerificationError(pendingAdminError.message))
           }
         } else {
           const pendingAdmin = Array.isArray(pendingAdminRows)
@@ -137,7 +153,11 @@ export function LoginForm() {
             : undefined
 
           if (!pendingAdmin) {
-            setError(errorMessage)
+            if (isSuperAdminEmail(normalizedEmail)) {
+              setError(getFriendlyReservedAdminSyncError())
+            } else {
+              setError(errorMessage)
+            }
           } else {
             const fullName = pendingAdmin.full_name?.trim() || normalizedEmail.split("@")[0] || "Admin"
             const [firstName, ...lastNameParts] = fullName.split(/\s+/)
@@ -157,9 +177,9 @@ export function LoginForm() {
 
             if (signUpError) {
               if (isEmailRateLimitError(signUpError.message)) {
-                setError("Email rate limit exceeded. Wait a bit, then try logging in again.")
+                setError("Too many attempts were made. Please wait a bit, then try again.")
               } else {
-                setError(signUpError.message || "Failed to start admin email verification.")
+                setError(getFriendlyAdminVerificationError(signUpError.message))
               }
             } else if (signUpData.session) {
               router.push("/admin/dashboard")
@@ -208,7 +228,7 @@ export function LoginForm() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your.email@school.edu"
+                    placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
