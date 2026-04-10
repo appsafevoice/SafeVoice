@@ -10,10 +10,20 @@ interface AnnouncementsFeedProps {
   fallbackAnnouncements: Announcement[]
 }
 
+const MAX_ANNOUNCEMENTS = 5
+
+function mergeAnnouncements(liveAnnouncements: Announcement[], fallbackAnnouncements: Announcement[]) {
+  const fallbackIds = new Set(fallbackAnnouncements.map((announcement) => announcement.id))
+  const visibleLiveAnnouncements = liveAnnouncements.filter((announcement) => !fallbackIds.has(announcement.id))
+
+  // Keep the default reminder cards pinned after live content.
+  return [...visibleLiveAnnouncements, ...fallbackAnnouncements]
+}
+
 export function AnnouncementsFeed({ initialAnnouncements, fallbackAnnouncements }: AnnouncementsFeedProps) {
   const supabase = createBrowserClient()
-  const [announcements, setAnnouncements] = useState<Announcement[]>(
-    initialAnnouncements.length > 0 ? initialAnnouncements : fallbackAnnouncements,
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() =>
+    mergeAnnouncements(initialAnnouncements, fallbackAnnouncements),
   )
 
   const fetchAnnouncements = async () => {
@@ -22,13 +32,9 @@ export function AnnouncementsFeed({ initialAnnouncements, fallbackAnnouncements 
       .select("*")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(5)
+      .limit(MAX_ANNOUNCEMENTS)
 
-    if (data && data.length > 0) {
-      setAnnouncements(data)
-    } else {
-      setAnnouncements(fallbackAnnouncements)
-    }
+    setAnnouncements(mergeAnnouncements(data || [], fallbackAnnouncements))
   }
 
   useEffect(() => {
@@ -47,7 +53,7 @@ export function AnnouncementsFeed({ initialAnnouncements, fallbackAnnouncements 
   }, [])
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3">
       {announcements.map((announcement) => (
         <AnnouncementCard key={announcement.id} announcement={announcement} />
       ))}

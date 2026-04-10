@@ -19,6 +19,9 @@ export default async function ProfileReportsPage({ searchParams }: ProfileReport
     redirect("/login")
   }
 
+  const { data: profile } = await supabase.from("profiles").select("is_verified").eq("id", user.id).maybeSingle()
+  const reportingDisabled = profile?.is_verified !== true
+
   const { data: reports } = await supabase
     .from("reports")
     .select("*")
@@ -30,7 +33,7 @@ export default async function ProfileReportsPage({ searchParams }: ProfileReport
   const initialOpenReportId = resolvedSearchParams?.reportId?.trim() || null
 
   return (
-    <AppShell>
+    <AppShell reportingDisabled={reportingDisabled}>
       <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-center gap-3 pt-2 pb-3 sm:pb-4">
           <Link href="/profile" className="p-2 -ml-2 hover:bg-accent rounded-lg transition-colors">

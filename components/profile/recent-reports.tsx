@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { FileText, Clock, CheckCircle, AlertCircle } from "lucide-react"
 import type { Report } from "@/lib/supabase/types"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
+import { ReportMediaGrid } from "@/components/report/report-media-grid"
 import { createBrowserClient } from "@/lib/supabase/client"
 
 interface RecentReportsProps {
@@ -134,6 +135,30 @@ export function RecentReports({ reports, initialOpenReportId = null }: RecentRep
                     })}
                   </p>
                   <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{report.details}</p>
+                  {(report.resolution_description?.trim() || (report.resolution_attachments?.length || 0) > 0 || report.resolved_at) && (
+                    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-emerald-900">Resolution Update</p>
+                          <p className="text-xs text-emerald-700">
+                            {report.resolved_at
+                              ? `Resolved on ${new Date(report.resolved_at).toLocaleString()}`
+                              : "A resolution update has been added to this report."}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-emerald-950">
+                        {report.resolution_description?.trim() || "No resolution description was added."}
+                      </p>
+                      <div className="mt-3">
+                        <ReportMediaGrid
+                          attachments={report.resolution_attachments || []}
+                          emptyMessage="No resolution media was attached."
+                          itemLabelPrefix="Resolution"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-3">
                     <Button type="button" variant="outline" size="sm" onClick={() => toggleComments(report.id)}>
                       {openCommentsByReport[report.id] ? "Hide Comments" : "View Comments"}

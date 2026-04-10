@@ -93,11 +93,11 @@ export default async function HomePage() {
     .order("created_at", { ascending: false })
     .limit(5)
 
-  const displayAnnouncements = announcements && announcements.length > 0 ? announcements : defaultAnnouncements
+  const reportingDisabled = profile?.is_verified !== true
 
   return (
-    <AppShell>
-      <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
+    <AppShell reportingDisabled={reportingDisabled}>
+      <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 sm:gap-8">
         {/* Header */}
         <header className="flex items-start justify-between gap-4 pt-2">
           <Logo size="sm" />
@@ -112,18 +112,7 @@ export default async function HomePage() {
 
         {/* Report Button */}
         <section>
-          <ReportButton />
-        </section>
-
-        {/* Announcements Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Updates & Reminders</h2>
-          </div>
-          <AnnouncementsFeed
-            initialAnnouncements={announcements && announcements.length > 0 ? announcements : []}
-            fallbackAnnouncements={defaultAnnouncements}
-          />
+          <ReportButton disabled={reportingDisabled} />
         </section>
 
         {/* Motivational Section */}
@@ -134,6 +123,17 @@ export default async function HomePage() {
             }
           </p>
           <p className="text-center text-xs text-muted-foreground mt-2">- Ambrose Redmoon</p>
+        </section>
+
+        {/* Announcements Section */}
+        <section className="mt-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Updates & Reminders</h2>
+          </div>
+          <AnnouncementsFeed
+            initialAnnouncements={announcements && announcements.length > 0 ? announcements : []}
+            fallbackAnnouncements={defaultAnnouncements}
+          />
         </section>
       </div>
     </AppShell>

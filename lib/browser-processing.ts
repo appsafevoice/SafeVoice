@@ -58,8 +58,8 @@ export function buildPrintLoadingHtml({ title, description }: PrintLoadingHtmlOp
         width: 48px;
         height: 48px;
         border-radius: 999px;
-        border: 4px solid rgba(128, 0, 0, 0.14);
-        border-top-color: #800000;
+        border: 4px solid rgba(0, 124, 206, 0.14);
+        border-top-color: #007cce;
         animation: spin 0.8s linear infinite;
       }
 
@@ -79,7 +79,7 @@ export function buildPrintLoadingHtml({ title, description }: PrintLoadingHtmlOp
         height: 10px;
         overflow: hidden;
         border-radius: 999px;
-        background: rgba(128, 0, 0, 0.12);
+        background: rgba(129, 0, 0, 0.12);
       }
 
       .bar::before {
@@ -88,7 +88,7 @@ export function buildPrintLoadingHtml({ title, description }: PrintLoadingHtmlOp
         height: 100%;
         width: 38%;
         border-radius: inherit;
-        background: linear-gradient(90deg, #800000 0%, #b14545 100%);
+        background: linear-gradient(90deg, #007cce 0%, #4da6d9 100%);
         animation: slide 1.2s ease-in-out infinite;
       }
 

@@ -113,7 +113,7 @@ export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
   }
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden">
+    <Card className="flex h-full flex-col overflow-hidden border-0 shadow-sm">
       {announcement.image_url && (
         <div className="aspect-video relative">
           <img
@@ -123,17 +123,17 @@ export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
           />
         </div>
       )}
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start gap-3 sm:gap-4">
+      <CardContent className="flex flex-1 flex-col p-4 sm:p-5">
+        <div className="flex h-full items-start gap-3 sm:gap-4">
           <div className={`p-2 rounded-lg shrink-0 ${bgColors[announcement.type]}`}>
             <Icon className={`w-5 h-5 ${iconColors[announcement.type]}`} />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 flex-col">
             <h3 className="font-semibold text-foreground text-sm sm:text-base">{announcement.title}</h3>
             {announcement.content && (
               <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{announcement.content}</p>
             )}
-            <div className="mt-3">
+            <div className="mt-auto pt-3">
               <Button
                 type="button"
                 variant="ghost"

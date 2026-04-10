@@ -10,6 +10,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Loader2, Plus, ShieldCheck, Trash2, UserCog } from "lucide-react"
 
@@ -31,6 +41,7 @@ export function AdminAccountsManager() {
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [accountPendingRemove, setAccountPendingRemove] = useState<AdminAccountRow | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [processingAccountId, setProcessingAccountId] = useState<string | null>(null)
 
@@ -209,7 +220,14 @@ export function AdminAccountsManager() {
     setProcessingAccountId(null)
   }
 
-  const removeAccount = async (account: AdminAccountRow) => {
+  const cancelRemoveAccount = () => {
+    setAccountPendingRemove(null)
+  }
+
+  const confirmRemoveAccount = async () => {
+    if (!accountPendingRemove) return
+
+    const account = accountPendingRemove
     setErrorMessage("")
     setSuccessMessage("")
 
@@ -217,21 +235,22 @@ export function AdminAccountsManager() {
 
     if (!canManageAdmins) {
       setErrorMessage("Only the Super Admin can remove Admin accounts.")
+      setAccountPendingRemove(null)
       return
     }
     if (isSuperAdminEmail(targetEmail)) {
       setErrorMessage("The reserved Super Admin account cannot be removed.")
+      setAccountPendingRemove(null)
       return
     }
     if (currentUserEmail && targetEmail === currentUserEmail) {
       setErrorMessage("You cannot remove your own admin account.")
-      return
-    }
-    if (!window.confirm(`Remove Admin access for ${account.full_name}?`)) {
+      setAccountPendingRemove(null)
       return
     }
 
     setProcessingAccountId(account.id)
+    setAccountPendingRemove(null)
 
     const { error } = await supabase.rpc("super_admin_delete_admin_account", {
       p_admin_account_id: account.id,
@@ -467,7 +486,7 @@ export function AdminAccountsManager() {
                         type="button"
                         variant="destructive"
                         size="sm"
-                        onClick={() => removeAccount(account)}
+                        onClick={() => setAccountPendingRemove(account)}
                         disabled={isProcessing || !canManageAdmins}
                       >
                         {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -480,6 +499,35 @@ export function AdminAccountsManager() {
             })}
           </div>
         )}
+        <AlertDialog open={!!accountPendingRemove} onOpenChange={(open) => !open && cancelRemoveAccount()}>
+          <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this admin account?</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-300">
+                {accountPendingRemove
+                  ? `This will remove admin access for ${accountPendingRemove.full_name}. This action cannot be undone.`
+                  : "Confirm the removal of this admin account."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={cancelRemoveAccount}
+                className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600 hover:text-white"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  void confirmRemoveAccount()
+                }}
+                className="bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500/40"
+                disabled={!accountPendingRemove}
+              >
+                Confirm Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   )

@@ -137,9 +137,9 @@ export function AddToHomeScreenPrompt() {
 
   return (
     <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex justify-center sm:justify-end">
-      <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-[#800000]/15 bg-white/95 p-4 shadow-2xl backdrop-blur">
+      <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-[#007cce]/15 bg-white/95 p-4 shadow-2xl backdrop-blur">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-full bg-[#800000]/10 p-2 text-[#800000]">
+          <div className="mt-0.5 rounded-full bg-[#007cce]/10 p-2 text-[#007cce]">
             {isIos ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -174,7 +174,7 @@ export function AddToHomeScreenPrompt() {
               <Button type="button" variant="outline" onClick={dismissPrompt}>
                 Not now
               </Button>
-              <Button type="button" className="bg-[#800000] hover:bg-[#6a0000]" onClick={handleInstall}>
+              <Button type="button" className="bg-[#007cce] hover:bg-[#005a99]" onClick={handleInstall}>
                 {promptLabel}
               </Button>
             </div>

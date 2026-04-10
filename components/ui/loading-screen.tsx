@@ -36,7 +36,7 @@ export function LoadingScreen({
     >
       <div className="w-full max-w-md rounded-3xl border border-[#e7cfcf] bg-white/95 p-6 shadow-[0_24px_80px_rgba(83,19,19,0.16)]">
         <div className="flex items-start gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#800000]/10 text-[#800000]">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#007cce]/10 text-[#007cce]">
             <Spinner className="size-7" />
           </div>
           <div className="min-w-0 flex-1">

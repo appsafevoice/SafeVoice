@@ -4,7 +4,7 @@ import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Home, FileText, BarChart3, Upload, UserCog, X, LogOut } from "lucide-react"
+import { Home, FileText, BarChart3, Upload, UserCog, ShieldCheck, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { getAdminPositionLabel, isSuperAdminEmail } from "@/lib/admin"
@@ -21,6 +21,7 @@ const baseNavItems = [
   { href: "/admin/reports", label: "Report Details", icon: FileText },
   { href: "/admin/analytics", label: "Data Reports", icon: BarChart3 },
   { href: "/admin/content", label: "Content Manager", icon: Upload },
+  { href: "/admin/account-management", label: "Account Management", icon: UserCog },
 ]
 
 export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: AdminSidebarProps) {
@@ -30,7 +31,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
   const isSuperAdmin = isSuperAdminEmail(adminEmail)
   const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
   const navItems = isSuperAdmin
-    ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Account Management", icon: UserCog }]
+    ? [...baseNavItems, { href: "/admin/admin-accounts", label: "Admin Accounts", icon: ShieldCheck }]
     : baseNavItems
 
   const handleLogout = async () => {
@@ -46,7 +47,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
       {/* Sidebar */}
       <aside
         className={cn(
-          "admin-chrome fixed inset-y-0 left-0 z-50 w-64 bg-[#800000] border-r border-[#6a0000] transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "admin-chrome fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-[#02528a] via-[#01416a] to-[#003f62] border-r border-[#01416a] shadow-lg shadow-[#02528a]/10 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -63,7 +64,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
                   className="h-6 w-6 object-contain"
                 />
               </div>
-              <div>
+              <div className="flex flex-col justify-center">
                 <h2 className="font-semibold text-white/95">SafeVoice</h2>
                 <p className="text-xs text-white/70">{roleLabel}</p>
               </div>

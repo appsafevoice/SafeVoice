@@ -13,9 +13,10 @@ interface ProfileViewProps {
 
 export function ProfileView({ profile }: ProfileViewProps) {
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const reportingDisabled = profile.is_verified !== true
 
   return (
-    <AppShell>
+    <AppShell reportingDisabled={reportingDisabled}>
       <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
         <header className="pt-2 pb-2 sm:pb-4">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">My Profile</h1>

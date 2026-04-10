@@ -17,9 +17,9 @@ export function AdminNavbar({ onMenuClick, adminName, adminEmail, adminPosition 
   const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
 
   return (
-    <header className="admin-chrome sticky top-0 z-30 bg-[#800000]/95 backdrop-blur-sm border-b border-[#6a0000]">
+    <header className="admin-chrome sticky top-0 z-30 bg-gradient-to-r from-[#02528a] via-[#0269b1] to-[#007ccf] border-b border-[#01416a] shadow-sm shadow-[#02528a]/20">
       <div className="flex items-center justify-between px-4 h-16">
-        <button onClick={onMenuClick} className="lg:hidden text-white/70 hover:text-white/95">
+        <button onClick={onMenuClick} className="lg:hidden text-white/90 hover:text-white">
           <Menu className="w-6 h-6" />
         </button>
 

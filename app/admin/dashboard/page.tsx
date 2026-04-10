@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-[#800000]">Dashboard Overview</h1>
+          <h1 className="text-2xl font-bold text-black">Dashboard Overview</h1>
           <p className="text-[#8f6060]">Monitor bullying reports and manage counselor communications</p>
         </div>
 

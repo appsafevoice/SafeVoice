@@ -79,6 +79,7 @@ export default async function ProfilePage() {
         first_name: firstName,
         last_name: lastName,
         school_id_url: schoolIdUrl || undefined,
+        is_verified: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }

@@ -4,7 +4,12 @@ export interface Profile {
   first_name: string
   last_name: string
   email: string
+  full_name?: string
+  student_id?: string
   school_id_url?: string
+  is_verified?: boolean
+  verified_at?: string | null
+  verified_by_email?: string | null
   created_at: string
   updated_at: string
 }
@@ -17,6 +22,9 @@ export interface Report {
   bullying_type: string
   details: string
   attachments?: string[]
+  resolution_description?: string | null
+  resolution_attachments?: string[] | null
+  resolved_at?: string | null
   status: "pending" | "reviewed" | "in_progress" | "resolved"
   created_at: string
   updated_at: string

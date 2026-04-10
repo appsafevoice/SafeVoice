@@ -15,10 +15,21 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Plus, Pencil, Trash2, Bell, Quote, Megaphone, CheckCircle, AlertCircle, Upload, X, Heart } from "lucide-react"
@@ -44,6 +55,9 @@ export default function AdminContentClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [pendingDeleteTitle, setPendingDeleteTitle] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const supabaseRef = useRef<ReturnType<typeof createBrowserClient> | null>(null)
@@ -241,11 +255,21 @@ export default function AdminContentClient() {
     setIsSaving(false)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this content?")) return
+  const handleDelete = (id: string, title: string) => {
+    setPendingDeleteId(id)
+    setPendingDeleteTitle(title)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return
 
     const supabase = getSupabase()
-    const { error } = await supabase.from("announcements").delete().eq("id", id)
+    const { error } = await supabase.from("announcements").delete().eq("id", pendingDeleteId)
+
+    setIsDeleteDialogOpen(false)
+    setPendingDeleteId(null)
+    setPendingDeleteTitle("")
 
     if (!error) {
       setSuccessMessage("Content deleted successfully!")
@@ -280,7 +304,7 @@ export default function AdminContentClient() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#800000]">Content Manager</h1>
+            <h1 className="text-2xl font-bold text-[#810000]">Content Manager</h1>
             <p className="text-[#8f6060]">Manage announcements, quotes, and media</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -374,6 +398,31 @@ export default function AdminContentClient() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent className="bg-slate-100 border border-slate-300 text-slate-950 shadow-2xl max-w-md rounded-xl">
+              <AlertDialogHeader className="border-b border-slate-200 pb-4">
+                <AlertDialogTitle className="text-slate-950">Delete Content?</AlertDialogTitle>
+                <AlertDialogDescription className="text-slate-600">
+                  This action cannot be undone. Are you sure you want to delete "{pendingDeleteTitle || "this item"}"?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="pt-4">
+                <AlertDialogCancel
+                  onClick={() => setIsDeleteDialogOpen(false)}
+                  className="border border-slate-300 bg-slate-200 text-slate-950 hover:bg-slate-300 hover:text-slate-950"
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDelete}
+                  className="bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500/40"
+                >
+                  Confirm Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Success Message */}
@@ -412,7 +461,7 @@ export default function AdminContentClient() {
                 <Card
                   id={`announcement-${announcement.id}`}
                   key={announcement.id}
-                  className={`bg-slate-800/50 border-slate-700 ${!announcement.is_active ? "opacity-60" : ""} ${highlightedAnnouncementId === announcement.id ? "ring-2 ring-cyan-400" : ""}`}
+                  className={`bg-slate-800/50 border-slate-700 ${highlightedAnnouncementId === announcement.id ? "ring-2 ring-cyan-400" : ""}`}
                 >
                   {announcement.image_url && (
                     <div className="aspect-video relative overflow-hidden rounded-t-lg">
@@ -426,22 +475,28 @@ export default function AdminContentClient() {
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-cyan-500/20 rounded">
-                          <TypeIcon className="w-4 h-4 text-cyan-400" />
+                        <div className={`p-1.5 rounded ${announcement.is_active ? "bg-cyan-500/20" : "bg-slate-700/30"}`}>
+                          <TypeIcon className={`w-4 h-4 ${announcement.is_active ? "text-cyan-400" : "text-slate-500"}`} />
                         </div>
-                        <span className="text-xs text-slate-400 capitalize">{announcement.type}</span>
+                        <span className={`text-xs capitalize ${announcement.is_active ? "text-slate-400" : "text-slate-500"}`}>{announcement.type}</span>
                       </div>
-                      <Switch
-                        checked={announcement.is_active}
-                        onCheckedChange={() => toggleActive(announcement.id, announcement.is_active)}
-                      />
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${announcement.is_active ? "text-slate-400" : "text-slate-500"}`}>
+                          {announcement.is_active ? "Active" : "Inactive"}
+                        </span>
+                        <Switch
+                          checked={announcement.is_active}
+                          onCheckedChange={() => toggleActive(announcement.id, announcement.is_active)}
+                          className={`opacity-100 ${!announcement.is_active ? "data-[state=checked]:bg-slate-500 data-[state=unchecked]:bg-slate-600" : ""}`}
+                        />
+                      </div>
                     </div>
-                    <CardTitle className="text-white text-lg mt-2">{announcement.title}</CardTitle>
+                    <CardTitle className={`${announcement.is_active ? "text-white" : "text-slate-100"} text-lg mt-2`}>{announcement.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-400 line-clamp-3 mb-4">{announcement.content}</p>
+                    <p className={`text-sm line-clamp-3 mb-4 ${announcement.is_active ? "text-slate-400" : "text-slate-500"}`}>{announcement.content}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">
+                      <span className={`text-xs ${announcement.is_active ? "text-slate-500" : "text-slate-400"}`}>
                         {new Date(announcement.created_at).toLocaleDateString()}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs text-pink-300">
@@ -460,7 +515,7 @@ export default function AdminContentClient() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(announcement.id)}
+                          onClick={() => handleDelete(announcement.id, announcement.title)}
                           className="h-8 w-8 text-slate-400 hover:text-red-400"
                         >
                           <Trash2 className="w-4 h-4" />
