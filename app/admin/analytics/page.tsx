@@ -50,7 +50,6 @@ type ExportSectionKey =
   | "monthlyTrend"
   | "typeDistribution"
   | "dailyActivity"
-  | "typeOverTime"
   | "descriptiveAnalysis"
 
 type ExportSectionsState = Record<ExportSectionKey, boolean>
@@ -89,16 +88,6 @@ export default function AdminAnalyticsPage() {
     const date = new Date()
     return date.toISOString().split("T")[0]
   })
-  const [typeTrendStart, setTypeTrendStart] = useState(() => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - 5)
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-  })
-  const [typeTrendEnd, setTypeTrendEnd] = useState(() => {
-    const date = new Date()
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-  })
-  const [selectedTypeTrend, setSelectedTypeTrend] = useState("all")
   const [exportStart, setExportStart] = useState(() => {
     const date = new Date()
     date.setDate(date.getDate() - 13)
@@ -113,7 +102,6 @@ export default function AdminAnalyticsPage() {
     monthlyTrend: true,
     typeDistribution: true,
     dailyActivity: true,
-    typeOverTime: true,
     descriptiveAnalysis: true,
   }))
   const [isExporting, setIsExporting] = useState(false)
@@ -233,57 +221,6 @@ export default function AdminAnalyticsPage() {
     return rows
   })()
 
-  const allTypes = [
-    ...new Set(reports.map((r) => r.bullying_type).filter((type): type is string => Boolean(type))),
-  ]
-
-  // Type by month for stacked chart with date range + type filter
-  const typeByMonth = (() => {
-    if (!typeTrendStart || !typeTrendEnd) return []
-
-    const [startYear, startMonth] = typeTrendStart.split("-").map(Number)
-    const [endYear, endMonth] = typeTrendEnd.split("-").map(Number)
-    const startDate = new Date(startYear, startMonth - 1, 1)
-    const endDate = new Date(endYear, endMonth - 1, 1)
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return []
-
-    const selectedTypes = selectedTypeTrend === "all" ? allTypes : [selectedTypeTrend]
-    const filteredReports = reports.filter((r) => {
-      const reportDate = new Date(r.created_at)
-      return (
-        reportDate >= new Date(startDate.getFullYear(), startDate.getMonth(), 1) &&
-        reportDate <= new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0) &&
-        (selectedTypeTrend === "all" || r.bullying_type === selectedTypeTrend)
-      )
-    })
-
-    const rows: { [key: string]: string | number }[] = []
-    const cursor = new Date(startDate)
-
-    while (cursor <= endDate && rows.length < 36) {
-      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
-      const yearLabel = cursor.getFullYear().toString().slice(-2)
-      const monthStartDate = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
-      const monthEndDate = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
-      const row: { [key: string]: string | number } = { month: `${monthLabel} '${yearLabel}` }
-
-      selectedTypes.forEach((type) => {
-        row[type] = filteredReports.filter((r) => {
-          const reportDate = new Date(r.created_at)
-          return r.bullying_type === type && reportDate >= monthStartDate && reportDate <= monthEndDate
-        }).length
-      })
-
-      rows.push(row)
-      cursor.setMonth(cursor.getMonth() + 1)
-    }
-
-    return rows
-  })()
-
-  const visibleTypeKeys = selectedTypeTrend === "all" ? allTypes : [selectedTypeTrend]
-
   const { exportReports, exportRangeLabel, isExportRangeValid, exportDayCount } = (() => {
     const empty = {
       exportReports: [] as Report[],
@@ -400,47 +337,6 @@ export default function AdminAnalyticsPage() {
     return { rows, isTruncated }
   })()
 
-  const exportTypes = [
-    ...new Set(exportReports.map((report) => report.bullying_type).filter((type): type is string => Boolean(type))),
-  ]
-  const exportTypeKeys =
-    selectedTypeTrend === "all"
-      ? exportTypes
-      : [selectedTypeTrend].filter((type): type is string => Boolean(type))
-
-  const exportTypeOverTime = (() => {
-    if (!isExportRangeValid) return []
-    if (exportTypeKeys.length === 0) return []
-
-    const startDate = new Date(exportStart)
-    const endDate = new Date(exportEnd)
-    const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
-    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1)
-
-    const rows: { [key: string]: string | number }[] = []
-    const cursor = new Date(startMonth)
-
-    while (cursor <= endMonth && rows.length < 36) {
-      const monthLabel = cursor.toLocaleString("en-US", { month: "short" })
-      const yearLabel = cursor.getFullYear().toString().slice(-2)
-      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
-      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
-      const row: { [key: string]: string | number } = { month: `${monthLabel} '${yearLabel}` }
-
-      exportTypeKeys.forEach((type) => {
-        row[type] = exportReports.filter((report) => {
-          const reportDate = new Date(report.created_at)
-          return report.bullying_type === type && reportDate >= monthStart && reportDate <= monthEnd
-        }).length
-      })
-
-      rows.push(row)
-      cursor.setMonth(cursor.getMonth() + 1)
-    }
-
-    return rows
-  })()
-
   const hasSelectedExportSections = Object.values(exportSections).some(Boolean)
 
   const descriptiveAnalysis = (() => {
@@ -463,6 +359,9 @@ export default function AdminAnalyticsPage() {
     if (topType) {
       const share = exportSummary.total ? (topType.value / exportSummary.total) * 100 : 0
       insights.push(`${topType.name} is the most common type (${topType.value} reports, ${share.toFixed(0)}%).`)
+      if (share >= 35) {
+        insights.push(`This suggests a recurring issue in ${topType.name} incidents. Consider targeted prevention and education for this category.`)
+      }
     }
 
     if (exportMonthlyTrend.length > 1) {
@@ -493,7 +392,108 @@ export default function AdminAnalyticsPage() {
       `Status mix: ${resolvedRate.toFixed(0)}% resolved, ${inProgressRate.toFixed(0)}% in progress, ${pendingRate.toFixed(0)}% pending.`,
     )
 
+    const resolutionMethods = [
+      { label: "counseling or mediation", regex: /counsel|medi(ation|ator|ate|ation)/i },
+      { label: "parent / guardian contact", regex: /parent|guardian|family|home communication/i },
+      { label: "staff intervention", regex: /teacher|staff|counselor|administrator|supervisor/i },
+      { label: "safety planning", regex: /safety plan|safety measures|secure|protect/i },
+      { label: "disciplinary follow-up", regex: /warning|consequence|disciplin|restorative/i },
+    ]
+    const resolvedReports = exportReports.filter((report) => report.status === "resolved")
+    const resolutionText = resolvedReports
+      .map((report) => report.resolution_description?.trim().toLowerCase() || "")
+      .join(" ")
+    const methodMatches = resolutionMethods
+      .map((method) => ({ label: method.label, count: (resolutionText.match(method.regex) || []).length }))
+      .filter((method) => method.count > 0)
+      .sort((a, b) => b.count - a.count)
+
+    if (resolvedReports.length > 0) {
+      if (methodMatches.length > 0) {
+        const listedMethods = methodMatches.slice(0, 3).map((method) => method.label).join(", ")
+        insights.push(`Common resolution methods include ${listedMethods}.`)
+      } else if (resolvedReports.some((report) => report.resolution_description?.trim())) {
+        insights.push("Resolution notes indicate a range of follow-up actions, with many cases resolved through direct staff communication and follow-up.")
+      } else {
+        insights.push("A number of resolved reports have no detailed resolution notes; standardized resolution documentation would improve clarity.")
+      }
+
+      const documentedResolutions = resolvedReports.filter((report) => report.resolution_description?.trim())
+      const documentedPercent = resolvedReports.length
+        ? (documentedResolutions.length / resolvedReports.length) * 100
+        : 0
+      if (documentedPercent < 60) {
+        insights.push(
+          `Only ${documentedPercent.toFixed(0)}% of resolved cases include descriptive resolution notes. Encourage staff to record outcomes consistently to improve follow-up and accountability.`,
+        )
+      }
+    } else {
+      insights.push(
+        "No resolved incidents were recorded in this range. Prioritize follow-up and formal closure for reports that are still pending or in progress.",
+      )
+    }
+
+    if (pendingRate > 40) {
+      insights.push(
+        "A high share of reports remain pending. Review case assignment and follow-up workflows to ensure timely response and resolution.",
+      )
+    }
+
+    if (inProgressRate > 25) {
+      insights.push(
+        "Several incidents are actively being worked on. Maintain regular progress checks and clear next steps for each in-progress case.",
+      )
+    }
+
+    if (topType && topType.value / exportSummary.total >= 0.25) {
+      insights.push(
+        `Focus prevention efforts on ${topType.name} incidents, as they account for a large share of cases and may point to a systemic concern.`,
+      )
+    }
+
+    if (exportTypeDistribution.length > 1) {
+      const recurringTypes = exportTypeDistribution.slice(0, 2).map((item) => item.name)
+      insights.push(`Recurring issues are found in ${recurringTypes.join(" and ")} cases; strengthen training and communications for these categories.`)
+    }
+
+    insights.push(
+      "Recommended improvements: increase preventive education for the most common incident types, ensure resolution outcomes are documented, and use trends to assign more targeted support to affected students.",
+    )
+
     return insights
+  })()
+
+  const analysisSections = (() => {
+    const categories = [
+      {
+        title: "Observations",
+        matcher: /(reports recorded|highest daily activity|status mix|resolution notes|no resolved incidents|recurring issue|monthly volume|daily activity)/i,
+      },
+      {
+        title: "Trends",
+        matcher: /(volume increased|volume decreased|held steady|recurring issues|daily activity|monthly volume|trend|share|pattern)/i,
+      },
+      {
+        title: "Recommendations",
+        matcher: /(recommend|encourage|review|focus|maintain|ensure|prioritize|improve|prevent|strengthen|document|follow-up|support)/i,
+      },
+    ]
+
+    const sectionItems = categories.map((category) => ({ title: category.title, items: [] as string[] }))
+
+    descriptiveAnalysis.forEach((item) => {
+      const categoryIndex = categories.findIndex((category) => category.matcher.test(item))
+      if (categoryIndex >= 0) {
+        sectionItems[categoryIndex].items.push(item)
+      } else {
+        sectionItems[0].items.push(item)
+      }
+    })
+
+    return sectionItems.map((section) => ({
+      title: section.title,
+      items: section.items.length > 0 ? section.items : [`No ${section.title.toLowerCase()} available for the selected timeline.`],
+    }))
   })()
 
   const handlePrintDataReport = async () => {
@@ -578,18 +578,6 @@ export default function AdminAnalyticsPage() {
         ${exportDailyActivity.rows.length > 0 ? `<table><thead><tr><th>Date</th><th>Reports</th></tr></thead><tbody>${dailyRows}</tbody></table>${dailyNote}` : "<p class=\"muted\">No data for selected timeline.</p>"}
       `
 
-      const typeOverTimeHeader = exportTypeKeys.map((type) => `<th>${escapeHtml(type)}</th>`).join("")
-      const typeOverTimeRows = exportTypeOverTime
-        .map((row) => {
-          const cells = exportTypeKeys.map((type) => `<td>${row[type] ?? 0}</td>`).join("")
-          return `<tr><td>${row.month}</td>${cells}</tr>`
-        })
-        .join("")
-      const typeOverTimeSection = `
-        <h2>Incident Types Over Time</h2>
-        ${exportTypeOverTime.length > 0 ? `<table><thead><tr><th>Month</th>${typeOverTimeHeader}</tr></thead><tbody>${typeOverTimeRows}</tbody></table>` : "<p class=\"muted\">No data for selected timeline.</p>"}
-      `
-
       const analysisItems = descriptiveAnalysis
         .map((item) => `<li>${escapeHtml(item)}</li>`)
         .join("")
@@ -603,7 +591,6 @@ export default function AdminAnalyticsPage() {
         exportSections.monthlyTrend ? monthlySection : "",
         exportSections.typeDistribution ? typeSection : "",
         exportSections.dailyActivity ? dailySection : "",
-        exportSections.typeOverTime ? typeOverTimeSection : "",
         exportSections.descriptiveAnalysis ? analysisSection : "",
       ]
         .filter(Boolean)
@@ -698,7 +685,7 @@ export default function AdminAnalyticsPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-black">Data Reports</h1>
-          <p className="text-black">Comprehensive analytics and visualizations of bullying reports</p>
+          <p className="text-black">Analytics, trends, and export tools for bullying incident data</p>
         </div>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -742,12 +729,12 @@ export default function AdminAnalyticsPage() {
           </Link>
         </div>
 
-        {/* Descriptive Analysis + Export */}
+        {/* Export Controls */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Descriptive Analysis & Export</CardTitle>
+            <CardTitle className="text-white">Export Report</CardTitle>
             <CardDescription className="text-slate-400">
-              Generate insights and export a PDF report for a selected timeline
+              Export a PDF for the selected incident timeline
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -779,7 +766,7 @@ export default function AdminAnalyticsPage() {
                       onCheckedChange={handleExportSectionChange("summary")}
                     />
                     <Label htmlFor="export-summary" className="text-slate-200">
-                      Summary stats
+                      Summary
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -814,22 +801,12 @@ export default function AdminAnalyticsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      id="export-type-over-time"
-                      checked={exportSections.typeOverTime}
-                      onCheckedChange={handleExportSectionChange("typeOverTime")}
-                    />
-                    <Label htmlFor="export-type-over-time" className="text-slate-200">
-                      Incident types over time
-                    </Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
                       id="export-analysis"
                       checked={exportSections.descriptiveAnalysis}
                       onCheckedChange={handleExportSectionChange("descriptiveAnalysis")}
                     />
                     <Label htmlFor="export-analysis" className="text-slate-200">
-                      Descriptive analysis
+                      Analysis
                     </Label>
                   </div>
                 </div>
@@ -854,18 +831,10 @@ export default function AdminAnalyticsPage() {
               </div>
 
               <div className="rounded-lg bg-slate-700/30 border border-slate-600 p-4">
-                <p className="text-xs text-slate-400 mb-2">
-                  Descriptive analysis {isExportRangeValid ? `(${exportRangeLabel})` : ""}
+                <p className="text-xs text-slate-400 mb-2">Export options are applied to the selected timeline</p>
+                <p className="text-sm text-slate-100 leading-6">
+                  Select the sections to include in the PDF report. The analysis section captures resolution trends, recurring issues, and recommendations.
                 </p>
-                {descriptiveAnalysis.length > 0 ? (
-                  <ul className="list-disc list-inside text-sm text-slate-100 space-y-1">
-                    {descriptiveAnalysis.map((item, index) => (
-                      <li key={`${index}-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-400">No analysis available.</p>
-                )}
               </div>
             </div>
           </CardContent>
@@ -879,7 +848,7 @@ export default function AdminAnalyticsPage() {
               <div>
                 <CardTitle className="text-white">Monthly Trend</CardTitle>
                 <CardDescription className="text-slate-400">
-                  Reports between selected months
+                  Report volume across the selected months
                 </CardDescription>
               </div>
               <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
@@ -943,7 +912,7 @@ export default function AdminAnalyticsPage() {
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-white">Incident Categories</CardTitle>
-                <CardDescription className="text-slate-400">Distribution by bullying type between selected dates</CardDescription>
+                <CardDescription className="text-slate-400">Distribution of bullying types over the selected range</CardDescription>
               </div>
               <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
                 <Input
@@ -1013,7 +982,7 @@ export default function AdminAnalyticsPage() {
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-white">Daily Activity</CardTitle>
-                <CardDescription className="text-slate-400">Reports between selected dates</CardDescription>
+                <CardDescription className="text-slate-400">Daily report volume for the selected range</CardDescription>
               </div>
               <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
                 <Input
@@ -1061,82 +1030,30 @@ export default function AdminAnalyticsPage() {
 
         </div>
 
-        {/* Type by Month Stacked Chart */}
+        {/* Descriptive Analysis */}
         <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="flex flex-col gap-3">
-            <div>
-              <CardTitle className="text-white">Incident Types Over Time</CardTitle>
-              <CardDescription className="text-slate-400">Monthly breakdown by bullying category</CardDescription>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Select value={selectedTypeTrend} onValueChange={setSelectedTypeTrend}>
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                  <SelectValue placeholder="Filter type" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="all" className="text-white">All Types</SelectItem>
-                  {allTypes.map((type) => (
-                    <SelectItem key={type} value={type} className="text-white">
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="month"
-                value={typeTrendStart}
-                onChange={(e) => setTypeTrendStart(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
-              />
-              <Input
-                type="month"
-                value={typeTrendEnd}
-                onChange={(e) => setTypeTrendEnd(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
-              />
-            </div>
+          <CardHeader>
+            <CardTitle className="text-white">Descriptive Analysis</CardTitle>
+            <CardDescription className="text-slate-400">
+              Observations, trends, and recommendations for the current report timeline
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              {visibleTypeKeys.length > 0 && typeByMonth.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={typeByMonth}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
-                    <XAxis dataKey="month" stroke={ADMIN_CHART_AXIS} fontSize={12} />
-                    <YAxis stroke={ADMIN_CHART_AXIS} fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: ADMIN_CHART_SURFACE,
-                        border: `1px solid ${ADMIN_CHART_BORDER}`,
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: ADMIN_CHART_TEXT }}
-                      itemStyle={{ color: ADMIN_CHART_TEXT }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      height={36}
-                      formatter={(value) => <span className="text-slate-300 text-sm">{value}</span>}
-                    />
-                    {visibleTypeKeys.map((type, index) => (
-                      <Bar
-                        key={type}
-                        dataKey={type}
-                        stackId="a"
-                        fill={ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]}
-                        radius={index === visibleTypeKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                      />
+            <div className="grid gap-4 lg:grid-cols-3">
+              {analysisSections.map((section) => (
+                <div key={section.title} className="space-y-3 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <h3 className="text-sm font-semibold text-white">{section.title}</h3>
+                  <ul className="list-disc list-inside text-sm text-slate-100 space-y-2">
+                    {section.items.map((item, index) => (
+                      <li key={`${section.title}-${index}`}>{item}</li>
                     ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-500">
-                  No data available for selected type/date range
+                  </ul>
                 </div>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>
+
       </div>
     </AdminLayout>
   )
