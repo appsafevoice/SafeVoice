@@ -7,6 +7,8 @@ create table if not exists public.profiles (
   full_name text,
   student_id text,
   school_id_url text,
+  gender gender_enum,
+  year_level year_level_enum,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -34,6 +36,12 @@ alter table if exists public.profiles
 
 alter table if exists public.profiles
   add column if not exists school_id_url text;
+
+alter table if exists public.profiles
+  add column if not exists gender gender_enum;
+
+alter table if exists public.profiles
+  add column if not exists year_level year_level_enum;
 
 alter table if exists public.profiles
   add column if not exists created_at timestamptz default now();
@@ -101,6 +109,8 @@ declare
   v_first_name text;
   v_last_name text;
   v_full_name text;
+  v_gender text;
+  v_year_level text;
 begin
   v_email := lower(btrim(coalesce(new.email, '')));
   v_lrn := nullif(btrim(coalesce(new.raw_user_meta_data ->> 'lrn', new.raw_user_meta_data ->> 'student_id', '')), '');
@@ -115,6 +125,8 @@ begin
     ),
     ''
   );
+  v_gender := nullif(btrim(coalesce(new.raw_user_meta_data ->> 'gender', '')), '');
+  v_year_level := nullif(btrim(coalesce(new.raw_user_meta_data ->> 'year_level', '')), '');
 
   if v_first_name is null and v_full_name is not null then
     v_first_name := split_part(v_full_name, ' ', 1);
@@ -132,6 +144,8 @@ begin
     last_name,
     full_name,
     student_id,
+    gender,
+    year_level,
     created_at,
     updated_at
   )
@@ -143,6 +157,8 @@ begin
     coalesce(v_last_name, ''),
     coalesce(v_full_name, nullif(btrim(concat_ws(' ', v_first_name, v_last_name)), '')),
     v_lrn,
+    v_gender::gender_enum,
+    v_year_level::year_level_enum,
     now(),
     now()
   )
@@ -162,6 +178,8 @@ begin
         else public.profiles.full_name
       end,
       student_id = coalesce(nullif(btrim(excluded.student_id), ''), public.profiles.student_id),
+      gender = coalesce(v_gender::gender_enum, public.profiles.gender),
+      year_level = coalesce(v_year_level::year_level_enum, public.profiles.year_level),
       updated_at = now();
 
   return new;
@@ -183,6 +201,8 @@ insert into public.profiles (
   last_name,
   full_name,
   student_id,
+  gender,
+  year_level,
   created_at,
   updated_at
 )
@@ -220,6 +240,8 @@ select
     ''
   ),
   nullif(btrim(coalesce(u.raw_user_meta_data ->> 'lrn', u.raw_user_meta_data ->> 'student_id', '')), ''),
+  nullif(btrim(coalesce(u.raw_user_meta_data ->> 'gender', '')), '')::gender_enum,
+  nullif(btrim(coalesce(u.raw_user_meta_data ->> 'year_level', '')), '')::year_level_enum,
   coalesce(u.created_at, now()),
   now()
 from auth.users u
@@ -239,4 +261,6 @@ set email = excluded.email,
       else public.profiles.full_name
     end,
     student_id = coalesce(nullif(btrim(excluded.student_id), ''), public.profiles.student_id),
+    gender = coalesce(excluded.gender::gender_enum, public.profiles.gender),
+    year_level = coalesce(excluded.year_level::year_level_enum, public.profiles.year_level),
     updated_at = now();

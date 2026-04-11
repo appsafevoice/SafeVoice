@@ -7,7 +7,7 @@ export default function AdminAccountsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-[#007cce]">Admin Accounts</h1>
-          <p className="text-[#8f6060]">Super Admin-only controls for creating, disabling, and removing admin accounts.</p>
+          <p className="text-black">Super Admin-only controls for creating, disabling, and removing admin accounts.</p>
         </div>
         <AdminAccountsManager />
       </div>

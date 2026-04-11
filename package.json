@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "promote-year-level": "node scripts/promote-year-level.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

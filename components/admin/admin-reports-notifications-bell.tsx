@@ -173,8 +173,8 @@ function formatStudentAccountName(profile: StudentAccountRow) {
   return formatReporterName(profile) || normalizeEmail(profile.email).split("@")[0] || "Student"
 }
 
-function sortByCreatedAtAscending<T extends { created_at: string }>(items: T[]) {
-  return [...items].sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime())
+function sortByCreatedAtDescending<T extends { created_at: string }>(items: T[]) {
+  return [...items].sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
 }
 
 function getAccountItemHref(item: AccountItem) {
@@ -252,9 +252,9 @@ export function AdminReportsNotificationsBell() {
   }, 0)
 
   const unreadCount = unreadReportsCount + unreadActivityCount + unreadAccountsCount
-  const sortedReports = useMemo(() => sortByCreatedAtAscending(reports), [reports])
-  const sortedActivity = useMemo(() => sortByCreatedAtAscending(activity), [activity])
-  const sortedAccounts = useMemo(() => sortByCreatedAtAscending(accounts), [accounts])
+  const sortedReports = useMemo(() => sortByCreatedAtDescending(reports), [reports])
+  const sortedActivity = useMemo(() => sortByCreatedAtDescending(activity), [activity])
+  const sortedAccounts = useMemo(() => sortByCreatedAtDescending(accounts), [accounts])
 
   const ensureBaselineReadAt = (latestCreatedAt?: string | null) => {
     const current = notificationStateRef.current

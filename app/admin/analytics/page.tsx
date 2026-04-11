@@ -697,8 +697,8 @@ export default function AdminAnalyticsPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-[#810000]">Data Reports</h1>
-          <p className="text-[#8f6060]">Comprehensive analytics and visualizations of bullying reports</p>
+          <h1 className="text-2xl font-bold text-black">Data Reports</h1>
+          <p className="text-black">Comprehensive analytics and visualizations of bullying reports</p>
         </div>
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -38,6 +38,8 @@ type StudentAccountRow = {
   verified_at: string | null
   verified_by_email: string | null
   created_at: string
+  gender: string | null
+  year_level: string | null
 }
 
 type AdminProfileRow = {
@@ -183,7 +185,7 @@ export function StudentAccountsManager() {
 
     const { data: profileRows, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, full_name, first_name, last_name, lrn, student_id, school_id_url, is_verified, verified_at, verified_by_email, created_at")
+      .select("id, email, full_name, first_name, last_name, lrn, student_id, school_id_url, is_verified, verified_at, verified_by_email, created_at, gender, year_level")
       .order("created_at", { ascending: false })
 
     if (profilesError) {
@@ -536,6 +538,14 @@ export function StudentAccountsManager() {
                       <div className="space-y-1">
                         <p className="text-slate-400">Full Name</p>
                         <p className="text-slate-100">{student.full_name?.trim() || `${student.first_name || ""} ${student.last_name || ""}`.trim() || "Not provided"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-400">Gender</p>
+                        <p className="text-slate-100 capitalize">{student.gender || "Not provided"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-400">Year Level</p>
+                        <p className="text-slate-100">{student.year_level ? `Year ${student.year_level}` : "Not provided"}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-slate-400">Identifiers</p>

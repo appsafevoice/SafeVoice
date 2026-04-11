@@ -304,8 +304,8 @@ export default function AdminContentClient() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#810000]">Content Manager</h1>
-            <p className="text-[#8f6060]">Manage announcements, quotes, and media</p>
+            <h1 className="text-2xl font-bold text-black">Content Manager</h1>
+            <p className="text-black">Manage announcements, quotes, and media</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

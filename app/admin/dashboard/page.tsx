@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-black">Dashboard Overview</h1>
-          <p className="text-[#8f6060]">Monitor bullying reports and manage counselor communications</p>
+          <p className="text-black">Monitor bullying reports and manage counselor communications</p>
         </div>
 
         {/* Stats Grid */}

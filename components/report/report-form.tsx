@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Upload, X, CheckCircle, ArrowLeft, ImageIcon, FileVideo } from "lucide-react"
+import { Loader2, Upload, X, CheckCircle, ArrowLeft, ImageIcon, FileVideo, Music } from "lucide-react"
 import Link from "next/link"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 const bullyingTypes = [
   { value: "physical", label: "Physical Bullying" },
@@ -54,7 +55,18 @@ export function ReportForm({ userId }: ReportFormProps) {
     incidentLocation: "",
     otherLocation: "",
     details: "",
+    gender: "",
   })
+
+  const isAcceptedFile = (file: File): boolean => {
+    return file.type.startsWith("image/") || 
+           file.type.startsWith("video/") ||
+           file.type.startsWith("audio/") ||
+           /\.(mp3|wav|m4a)$/i.test(file.name) ||
+           file.type === "audio/mpeg" ||
+           file.type === "audio/wav" ||
+           file.type === "audio/mp4"
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
@@ -62,6 +74,12 @@ export function ReportForm({ userId }: ReportFormProps) {
 
     if (oversizedFiles.length > 0) {
       setError("Each file must be 25MB or smaller.")
+      return
+    }
+
+    const invalidFiles = selectedFiles.filter((file) => !isAcceptedFile(file))
+    if (invalidFiles.length > 0) {
+      setError("Please upload only images, videos, or audio files (MP3, WAV, M4A).")
       return
     }
 
@@ -103,6 +121,11 @@ export function ReportForm({ userId }: ReportFormProps) {
       !formData.otherLocation.trim()
     ) {
       setError("Please specify where the incident happened.")
+      return
+    }
+
+    if (!formData.gender) {
+      setError("Please select your gender.")
       return
     }
 
@@ -312,12 +335,26 @@ export function ReportForm({ userId }: ReportFormProps) {
               </div>
 
               <div className="space-y-2">
+                <Label>Gender *</Label>
+                <RadioGroup value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })} className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="male" id="gender-male" />
+                    <Label htmlFor="gender-male" className="font-normal cursor-pointer">Male</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="female" id="gender-female" />
+                    <Label htmlFor="gender-female" className="font-normal cursor-pointer">Female</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Attachments (Optional)</Label>
                 <div className="space-y-2">
                   <Input
                     id="attachments"
                     type="file"
-                    accept="image/*,video/*"
+                    accept="image/*,video/*,audio/mpeg,audio/wav,audio/mp4,.mp3,.wav,.m4a"
                     multiple
                     onChange={handleFileChange}
                     className="hidden"
@@ -328,7 +365,7 @@ export function ReportForm({ userId }: ReportFormProps) {
                     className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-accent/50 transition-colors"
                   >
                     <Upload className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Upload images or videos (max 10 files, 25MB each)</span>
+                    <span className="text-sm text-muted-foreground">Upload images, videos, or audio (max 10 files, 25MB each)</span>
                   </button>
 
                   {files.length > 0 && (
@@ -337,6 +374,8 @@ export function ReportForm({ userId }: ReportFormProps) {
                         <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                           {file.type.startsWith("image/") ? (
                             <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                          ) : file.type.startsWith("audio/") || /\.(mp3|wav|m4a)$/i.test(file.name) ? (
+                            <Music className="w-4 h-4 text-muted-foreground" />
                           ) : (
                             <FileVideo className="w-4 h-4 text-muted-foreground" />
                           )}
@@ -366,7 +405,8 @@ export function ReportForm({ userId }: ReportFormProps) {
                     !formData.incidentLocation ||
                     ((formData.incidentLocation === "others" || formData.incidentLocation === "outside_campus") &&
                       !formData.otherLocation.trim()) ||
-                    !formData.details
+                    !formData.details ||
+                    !formData.gender
                   }
                 >
                   {loading ? (

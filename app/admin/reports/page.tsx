@@ -766,7 +766,7 @@ export default function AdminReportsPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-[#007cce]">Report Details</h1>
-          <p className="text-[#8f6060]">View and manage all submitted bullying reports</p>
+          <p className="text-black">View and manage all submitted bullying reports</p>
         </div>
 
         {/* Filters */}

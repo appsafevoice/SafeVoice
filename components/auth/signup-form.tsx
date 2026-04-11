@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { normalizeEmail } from "@/lib/admin"
 import { createClient } from "@/lib/supabase/client"
 import { Eye, EyeOff, Loader2, CheckCircle, XCircle, Upload, X, ImageIcon, FileText } from "lucide-react"
@@ -23,7 +24,7 @@ type SignupDuplicateCheck = {
 }
 
 function isImageSchoolIdFile(file: File) {
-  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name)
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp|heic)$/i.test(file.name)
 }
 
 function isPdfSchoolIdFile(file: File) {
@@ -82,6 +83,8 @@ export function SignupForm() {
     email: "",
     password: "",
     confirmPassword: "",
+    gender: "",
+    yearLevel: "",
   })
 
   // Password validation rules
@@ -138,7 +141,7 @@ export function SignupForm() {
     }
 
     if (!isAcceptedSchoolIdFile(selectedFile)) {
-      setError("Upload a School ID as an image or PDF.")
+      setError("Upload a School ID as an image (JPG, JPEG, PNG, HEIC) or PDF.")
       e.target.value = ""
       setSchoolIdFile(null)
       return
@@ -189,8 +192,18 @@ export function SignupForm() {
       return
     }
 
+    if (!formData.gender) {
+      setError("Gender selection is required")
+      return
+    }
+
+    if (!formData.yearLevel) {
+      setError("Year level selection is required")
+      return
+    }
+
     if (!isAcceptedSchoolIdFile(schoolIdFile)) {
-      setError("Upload a School ID as an image or PDF.")
+      setError("Upload a School ID as an image (JPG, JPEG, PNG, HEIC) or PDF.")
       return
     }
 
@@ -261,6 +274,8 @@ export function SignupForm() {
             full_name: fullName || normalizedEmail.split("@")[0] || "User",
             student_id: formData.lrn,
             school_id_url: schoolIdReference,
+            gender: formData.gender,
+            year_level: formData.yearLevel,
           },
         },
       })
@@ -285,6 +300,8 @@ export function SignupForm() {
             full_name: fullName || normalizedEmail.split("@")[0] || "User",
             student_id: formData.lrn,
             school_id_url: schoolIdReference,
+            gender: formData.gender,
+            year_level: formData.yearLevel,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "id" },
@@ -376,6 +393,34 @@ export function SignupForm() {
               </div>
 
               <div className="space-y-2">
+                <Label>Gender</Label>
+                <RadioGroup value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })} className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="male" id="gender-male" />
+                    <Label htmlFor="gender-male" className="font-normal cursor-pointer">Male</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="female" id="gender-female" />
+                    <Label htmlFor="gender-female" className="font-normal cursor-pointer">Female</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Year Level *</Label>
+                <RadioGroup value={formData.yearLevel} onValueChange={(value) => setFormData({ ...formData, yearLevel: value })} className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="11" id="year-11" />
+                    <Label htmlFor="year-11" className="font-normal cursor-pointer">Year 11</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="12" id="year-12" />
+                    <Label htmlFor="year-12" className="font-normal cursor-pointer">Year 12</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
@@ -406,10 +451,12 @@ export function SignupForm() {
                     className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-accent/50"
                   >
                     <Upload className="h-5 w-5" />
-                    Upload School ID image or PDF (required)
+                    <div className="flex flex-col items-center">
+                      <span>Upload School ID image or PDF (required)</span>
+                      <span className="text-xs">Maximum file size: 10MB</span>
+                    </div>
                   </button>
                 )}
-                <p className="text-xs text-muted-foreground">Required for student verification. Maximum file size: 10MB.</p>
 
                 {schoolIdFile && (
                   <div className="overflow-hidden rounded-xl border border-border bg-muted/40">
@@ -542,7 +589,7 @@ export function SignupForm() {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={loading || !schoolIdFile || !isPasswordValid || formData.password !== formData.confirmPassword}
+                disabled={loading || !schoolIdFile || !isPasswordValid || formData.password !== formData.confirmPassword || !formData.gender || !formData.yearLevel}
               >
                 {loading ? (
                   <>

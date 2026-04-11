@@ -36,7 +36,7 @@ export function buildPrintLoadingHtml({ title, description }: PrintLoadingHtmlOp
         padding: 24px;
         font-family: Arial, sans-serif;
         background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
-        color: #531313;
+        color: #000000;
       }
 
       .card {
@@ -70,7 +70,7 @@ export function buildPrintLoadingHtml({ title, description }: PrintLoadingHtmlOp
 
       p {
         margin: 6px 0 0;
-        color: #8f6060;
+        color: #000000;
         line-height: 1.6;
       }
 

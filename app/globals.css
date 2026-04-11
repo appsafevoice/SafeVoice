@@ -133,13 +133,13 @@ body {
 /* Admin-specific palette overrides for the hardcoded slate/cyan interface */
 body.admin-theme {
   background: #ffffff;
-  color: #531313;
+  color: #000000;
   --background: #ffffff;
-  --foreground: #531313;
+  --foreground: #000000;
   --card: #f3f4f6;
-  --card-foreground: #531313;
+  --card-foreground: #000000;
   --popover: #ffffff;
-  --popover-foreground: #531313;
+  --popover-foreground: #000000;
   --primary: #02528a;
   --primary-foreground: #ffffff;
   --secondary: #dbeeff;

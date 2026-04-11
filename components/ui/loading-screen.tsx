@@ -40,13 +40,13 @@ export function LoadingScreen({
             <Spinner className="size-7" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-[#531313]">{title}</h2>
-            <p className="mt-1 text-sm leading-6 text-[#8f6060]">{description}</p>
+            <h2 className="text-lg font-semibold text-black">{title}</h2>
+            <p className="mt-1 text-sm leading-6 text-black">{description}</p>
           </div>
         </div>
 
         <div className="mt-5 space-y-2">
-          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em] text-[#8f6060]">
+          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em] text-black">
             <span>Progress</span>
             <span>{Math.round(progressValue)}%</span>
           </div>
