@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { waitForNextPaint } from "@/lib/browser-processing"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
@@ -106,6 +107,8 @@ export default function AdminAnalyticsPage() {
   }))
   const [isExporting, setIsExporting] = useState(false)
   const [exportLoadingState, setExportLoadingState] = useState<ExportLoadingState | null>(null)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createBrowserClient()
 
@@ -499,10 +502,7 @@ export default function AdminAnalyticsPage() {
   const handlePrintDataReport = async () => {
     if (!isExportRangeValid || !hasSelectedExportSections) return
 
-    // Open the print window before yielding so popup blockers still treat this as a user action.
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
-
+    setPreviewHtml(null)
     setIsExporting(true)
     setExportLoadingState({
       progress: 8,
@@ -630,26 +630,29 @@ export default function AdminAnalyticsPage() {
 
       setExportLoadingState({
         progress: 88,
-        description: "Opening the print preview.",
+        description: "Preparing preview.",
       })
       await waitForNextPaint()
 
-      printWindow.document.open()
-      printWindow.document.write(printHtml)
-      printWindow.document.close()
-      printWindow.focus()
+      setPreviewHtml(printHtml)
 
       setExportLoadingState({
         progress: 100,
-        description: "Print preview is ready.",
+        description: "Preview is ready.",
       })
       await waitForNextPaint()
-
-      printWindow.print()
     } finally {
       setIsExporting(false)
       setExportLoadingState(null)
     }
+  }
+
+  const handlePrintPreview = () => {
+    const frame = previewFrameRef.current
+    if (!frame?.contentWindow) return
+
+    frame.contentWindow.focus()
+    frame.contentWindow.print()
   }
 
   if (isLoading) {
@@ -672,6 +675,36 @@ export default function AdminAnalyticsPage() {
           progress={exportLoadingState.progress}
         />
       )}
+
+      <Dialog open={Boolean(previewHtml)} onOpenChange={(open) => !open && setPreviewHtml(null)}>
+        <DialogContent className="grid grid-rows-[auto_auto_1fr] h-[min(90vh,calc(100vh-4rem))] w-[min(80vw,72rem)] max-w-[80vw] overflow-hidden bg-slate-900 border border-slate-700 p-0">
+          <DialogHeader className="border-b border-slate-700 px-6 py-4">
+            <DialogTitle className="text-white">Export preview</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Review the generated report and print or close when ready.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-6 py-3">
+            <p className="text-sm text-slate-400">Preview is scrollable when content is large.</p>
+            <Button onClick={handlePrintPreview} disabled={!previewHtml} className="border-slate-700 bg-slate-800 text-white hover:bg-slate-700">
+              Print / Save PDF
+            </Button>
+          </div>
+          <div className="overflow-hidden bg-white">
+            {previewHtml ? (
+              <iframe
+                ref={previewFrameRef}
+                title="SafeVoice data report preview"
+                srcDoc={previewHtml}
+                className="h-full w-full border-0"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center p-10 text-slate-400">Loading preview…</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-6">
         {/* Header */}
         <div>

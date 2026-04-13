@@ -64,6 +64,8 @@ export default function AdminReportsPage() {
   const [startDateFilter, setStartDateFilter] = useState("")
   const [endDateFilter, setEndDateFilter] = useState("")
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [reportPreviewHtml, setReportPreviewHtml] = useState<string | null>(null)
+  const reportPreviewFrameRef = useRef<HTMLIFrameElement | null>(null)
   const [reportPendingDelete, setReportPendingDelete] = useState<Report | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [printLoadingState, setPrintLoadingState] = useState<PrintLoadingState | null>(null)
@@ -621,10 +623,7 @@ export default function AdminReportsPage() {
   }
 
   const handlePrintReport = async (report: Report) => {
-    // Open the print window before yielding so popup blockers still treat this as a user action.
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
-
+    setReportPreviewHtml(null)
     setIsPrinting(true)
     setPrintLoadingState({
       progress: 25,
@@ -702,16 +701,11 @@ export default function AdminReportsPage() {
 
       setPrintLoadingState({
         progress: 100,
-        description: "Print preview ready.",
+        description: "Preview is ready.",
       })
       await waitForNextPaint()
 
-      printWindow.document.open()
-      printWindow.document.write(printHtml)
-      printWindow.document.close()
-      printWindow.focus()
-
-      printWindow.print()
+      setReportPreviewHtml(printHtml)
     } finally {
       setIsPrinting(false)
       setPrintLoadingState(null)
@@ -728,6 +722,14 @@ export default function AdminReportsPage() {
     pending: "Pending",
     in_progress: "In Progress",
     resolved: "Resolved",
+  }
+
+  const handlePrintPreview = () => {
+    const frame = reportPreviewFrameRef.current
+    if (!frame?.contentWindow) return
+
+    frame.contentWindow.focus()
+    frame.contentWindow.print()
   }
 
   const confirmStatusChange = async () => {
@@ -753,6 +755,35 @@ export default function AdminReportsPage() {
           progress={printLoadingState.progress}
         />
       )}
+
+      <Dialog open={Boolean(reportPreviewHtml)} onOpenChange={(open) => !open && setReportPreviewHtml(null)}>
+        <DialogContent className="grid grid-rows-[auto_auto_1fr] h-[min(90vh,calc(100vh-4rem))] w-[min(80vw,72rem)] max-w-[80vw] overflow-hidden bg-slate-900 border border-slate-700 p-0">
+          <DialogHeader className="border-b border-slate-700 px-6 py-4">
+            <DialogTitle className="text-white">Report preview</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Review the generated report and print or close when ready.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-6 py-3">
+            <p className="text-sm text-slate-400">Preview is scrollable when content is large.</p>
+            <Button onClick={handlePrintPreview} disabled={!reportPreviewHtml} className="border-slate-700 bg-slate-800 text-white hover:bg-slate-700">
+              Print / Save PDF
+            </Button>
+          </div>
+          <div className="overflow-hidden bg-white">
+            {reportPreviewHtml ? (
+              <iframe
+                ref={reportPreviewFrameRef}
+                title="SafeVoice report preview"
+                srcDoc={reportPreviewHtml}
+                className="h-full w-full border-0"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center p-10 text-slate-400">Loading preview…</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="space-y-6">
         {/* Header */}
         <div>
