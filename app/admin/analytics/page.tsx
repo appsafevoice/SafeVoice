@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { buildPrintLoadingHtml, waitForNextPaint } from "@/lib/browser-processing"
+import { waitForNextPaint } from "@/lib/browser-processing"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
   ADMIN_CHART_AXIS,
@@ -502,15 +502,6 @@ export default function AdminAnalyticsPage() {
     // Open the print window before yielding so popup blockers still treat this as a user action.
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
-
-    printWindow.document.open()
-    printWindow.document.write(
-      buildPrintLoadingHtml({
-        title: "Preparing data report",
-        description: "Compiling the selected sections and opening the print preview.",
-      }),
-    )
-    printWindow.document.close()
 
     setIsExporting(true)
     setExportLoadingState({

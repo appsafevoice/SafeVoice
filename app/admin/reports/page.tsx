@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
 import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
-import { buildPrintLoadingHtml, waitForNextPaint } from "@/lib/browser-processing"
+import { waitForNextPaint } from "@/lib/browser-processing"
 import { REPORT_ATTACHMENTS_BUCKET, REPORT_MAX_FILES, REPORT_MAX_FILE_SIZE_BYTES, getAttachmentKind, sanitizeStorageFileName } from "@/lib/report-media"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
@@ -624,15 +624,6 @@ export default function AdminReportsPage() {
     // Open the print window before yielding so popup blockers still treat this as a user action.
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
-
-    printWindow.document.open()
-    printWindow.document.write(
-      buildPrintLoadingHtml({
-        title: "Preparing report details",
-        description: "Compiling the selected report and opening the print preview.",
-      }),
-    )
-    printWindow.document.close()
 
     setIsPrinting(true)
     setPrintLoadingState({
