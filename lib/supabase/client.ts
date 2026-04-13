@@ -2,7 +2,12 @@ import { createBrowserClient as createSupabaseBrowserClient } from "@supabase/ss
 import { supabaseAnonKey, supabaseUrl } from "./config"
 
 export function createClient() {
-  return createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createSupabaseBrowserClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: typeof window !== "undefined" ? window.sessionStorage : undefined,
+      persistSession: true,
+    },
+  })
 }
 
 export const createBrowserClient = createClient
