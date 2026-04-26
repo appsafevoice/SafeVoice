@@ -760,7 +760,7 @@ export default function AdminReportsPage() {
 
   const statusLabels: Record<string, string> = {
     pending: "Pending",
-    in_progress: "in progress",
+    in_progress: "In Progress",
     resolved: "Resolved",
   }
 
@@ -1022,7 +1022,7 @@ export default function AdminReportsPage() {
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
                           <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                          <SelectItem value="in_progress" className="text-white">in progress</SelectItem>
+                          <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
                           <SelectItem value="resolved" className="text-white" disabled={selectedReport.status !== "resolved"}>
                             Resolved
                           </SelectItem>
