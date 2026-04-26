@@ -44,6 +44,7 @@ interface Report {
   status: string
   created_at: string
   incident_date: string
+  resolution_description?: string | null
 }
 
 type ExportSectionKey =
@@ -531,7 +532,7 @@ export default function AdminAnalyticsPage() {
             <div class="value">${exportSummary.pending}</div>
           </div>
           <div class="summary-item">
-            <div class="label">In Progress</div>
+            <div class="label">in progress</div>
             <div class="value">${exportSummary.inProgress}</div>
           </div>
           <div class="summary-item">
@@ -737,7 +738,7 @@ export default function AdminAnalyticsPage() {
                 <p className="text-3xl font-bold text-violet-600">
                   {reports.filter((r) => r.status === "in_progress").length}
                 </p>
-                <p className="text-sm text-slate-400">In Progress</p>
+                <p className="text-sm text-slate-400">in progress</p>
               </CardContent>
             </Card>
           </Link>
@@ -968,9 +969,10 @@ export default function AdminAnalyticsPage() {
                         outerRadius={90}
                         paddingAngle={3}
                         dataKey="value"
-                        label={({ name, percent }) =>
-                          `${name} ${Number.isFinite(percent) ? (percent * 100).toFixed(0) : 0}%`
-                        }
+                        label={({ name, percent }) => {
+                          const percentValue = typeof percent === "number" ? percent : 0
+                          return `${name} ${(percentValue * 100).toFixed(0)}%`
+                        }}
                         labelLine={false}
                       >
                         {typeData.map((_, index) => (

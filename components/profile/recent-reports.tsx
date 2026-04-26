@@ -27,7 +27,7 @@ const statusConfig = {
     icon: AlertCircle,
   },
   in_progress: {
-    label: "In Progress",
+    label: "in progress",
     variant: "default" as const,
     icon: AlertCircle,
   },

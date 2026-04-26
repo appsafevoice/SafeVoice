@@ -22,8 +22,9 @@ import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
-import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
+import { canAdminManageReportResolutions, normalizeEmail } from "@/lib/admin"
 import { waitForNextPaint } from "@/lib/browser-processing"
+import { formatReportStatusLabel } from "@/lib/report-status"
 import { REPORT_ATTACHMENTS_BUCKET, REPORT_MAX_FILES, REPORT_MAX_FILE_SIZE_BYTES, getAttachmentKind, sanitizeStorageFileName } from "@/lib/report-media"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ReportCommentsThread } from "@/components/report/report-comments-thread"
@@ -70,6 +71,7 @@ export default function AdminReportsPage() {
   const [isPrinting, setIsPrinting] = useState(false)
   const [printLoadingState, setPrintLoadingState] = useState<PrintLoadingState | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+  const [currentAdminPosition, setCurrentAdminPosition] = useState<string | null>(null)
   const [processingReportId, setProcessingReportId] = useState<string | null>(null)
   const [resolutionDescription, setResolutionDescription] = useState("")
   const [existingResolutionAttachments, setExistingResolutionAttachments] = useState<string[]>([])
@@ -80,7 +82,8 @@ export default function AdminReportsPage() {
   const [statusChangeTarget, setStatusChangeTarget] = useState<string | null>(null)
   const openedReportIdFromQuery = useRef<string | null>(null)
   const supabase = createBrowserClient()
-  const canDeleteReports = isSuperAdminEmail(currentUserEmail)
+  const canDeleteReports = Boolean(currentUserEmail)
+  const canManageReportResolutions = canAdminManageReportResolutions(currentAdminPosition, currentUserEmail)
 
   useEffect(() => {
     if (!selectedReport) {
@@ -103,15 +106,30 @@ export default function AdminReportsPage() {
   }, [selectedReport])
 
   useEffect(() => {
-    const loadCurrentUserEmail = async () => {
+    const loadCurrentAdminContext = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      setCurrentUserEmail(user?.email ? normalizeEmail(user.email) : null)
+      const userEmail = user?.email ? normalizeEmail(user.email) : null
+      setCurrentUserEmail(userEmail)
+
+      if (!userEmail) {
+        setCurrentAdminPosition(null)
+        return
+      }
+
+      const { data: adminAccount } = await supabase
+        .from("admin_accounts")
+        .select("position")
+        .eq("email", userEmail)
+        .eq("is_active", true)
+        .maybeSingle()
+
+      setCurrentAdminPosition(adminAccount?.position?.trim() || null)
     }
 
-    void loadCurrentUserEmail()
+    void loadCurrentAdminContext()
   }, [supabase])
 
   useEffect(() => {
@@ -325,6 +343,16 @@ export default function AdminReportsPage() {
   }
 
   const handleResolutionFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!canManageReportResolutions) {
+      toast({
+        variant: "destructive",
+        title: "Resolution editing not allowed",
+        description: "This admin account can view resolution details but cannot post them.",
+      })
+      event.target.value = ""
+      return
+    }
+
     const selectedFiles = Array.from(event.target.files || [])
     if (selectedFiles.length === 0) return
 
@@ -359,14 +387,25 @@ export default function AdminReportsPage() {
   }
 
   const removeNewResolutionFile = (index: number) => {
+    if (!canManageReportResolutions) return
     setNewResolutionFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index))
   }
 
   const removeExistingResolutionAttachment = (url: string) => {
+    if (!canManageReportResolutions) return
     setExistingResolutionAttachments((prev) => prev.filter((attachment) => attachment !== url))
   }
 
   const confirmResolution = async (report: Report) => {
+    if (!canManageReportResolutions) {
+      toast({
+        variant: "destructive",
+        title: "Resolution editing not allowed",
+        description: "This admin account can view resolution details but cannot post them.",
+      })
+      return
+    }
+
     const trimmedDescription = resolutionDescription.trim()
     if (!trimmedDescription) {
       toast({
@@ -438,7 +477,7 @@ export default function AdminReportsPage() {
       toast({
         variant: "destructive",
         title: "Delete not allowed",
-        description: "Only the Super Admin can delete reports.",
+        description: "Only active admin accounts can delete reports.",
       })
       setReportPendingDelete(null)
       return
@@ -454,7 +493,7 @@ export default function AdminReportsPage() {
         title: "Delete failed",
         description:
           error.code === "42501"
-            ? "Only the Super Admin can delete reports."
+            ? "Only active admin accounts can delete reports."
             : error.message || "Failed to delete the selected report.",
       })
       setProcessingReportId(null)
@@ -561,7 +600,7 @@ export default function AdminReportsPage() {
   const buildReportInsights = (report: Report) => {
     const insights: string[] = []
     const createdAt = new Date(report.created_at)
-    const statusLabel = report.status || "pending"
+    const statusLabel = formatReportStatusLabel(report.status)
 
     insights.push(`Submitted on ${createdAt.toLocaleString()} and currently marked as ${statusLabel}.`)
 
@@ -685,7 +724,7 @@ export default function AdminReportsPage() {
               <div class="field"><span class="label">Incident Date:</span>${report.incident_date ? new Date(report.incident_date).toLocaleDateString() : "Not specified"}</div>
               <div class="field"><span class="label">Reporter:</span>${escapeHtml(report.reporter_name || "Unknown Student")}</div>
               <div class="field"><span class="label">Type:</span>${escapeHtml(report.bullying_type || "Unknown")}</div>
-              <div class="field"><span class="label">Status:</span>${escapeHtml(report.status || "pending")}</div>
+              <div class="field"><span class="label">Status:</span>${escapeHtml(formatReportStatusLabel(report.status))}</div>
             </div>
 
             <h2>Incident Details</h2>
@@ -717,10 +756,11 @@ export default function AdminReportsPage() {
   const selectedReportIsProcessing = selectedReport ? processingReportId === selectedReport.id : false
   const selectedReportIsBusy = selectedReportIsProcessing || isSavingResolution
   const totalResolutionFiles = existingResolutionAttachments.length + newResolutionFiles.length
+  const selectedReportStatusIsReadOnly = !canManageReportResolutions
 
   const statusLabels: Record<string, string> = {
     pending: "Pending",
-    in_progress: "In Progress",
+    in_progress: "in progress",
     resolved: "Resolved",
   }
 
@@ -734,6 +774,17 @@ export default function AdminReportsPage() {
 
   const confirmStatusChange = async () => {
     if (!selectedReport || !statusChangeTarget) return
+
+    if (!canManageReportResolutions) {
+      toast({
+        variant: "destructive",
+        title: "Status change not allowed",
+        description: "This admin account can view the report status but cannot change it.",
+      })
+      setStatusChangeTarget(null)
+      setIsStatusConfirmOpen(false)
+      return
+    }
 
     setIsStatusConfirmOpen(false)
     await updateStatus(selectedReport.id, statusChangeTarget)
@@ -811,7 +862,7 @@ export default function AdminReportsPage() {
                 <SelectContent className="bg-slate-800 border-slate-700">
                   <SelectItem value="all" className="text-white">All Status</SelectItem>
                   <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                  <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
+                  <SelectItem value="in_progress" className="text-white">in progress</SelectItem>
                   <SelectItem value="resolved" className="text-white">Resolved</SelectItem>
                 </SelectContent>
               </Select>
@@ -866,7 +917,7 @@ export default function AdminReportsPage() {
                           {report.bullying_type || "Unknown"}
                         </Badge>
                         <Badge variant="outline" className={getStatusColor(report.status)}>
-                          {report.status || "pending"}
+                          {formatReportStatusLabel(report.status)}
                         </Badge>
                       </div>
                       <p className="text-sm text-white whitespace-pre-line mb-2">
@@ -959,7 +1010,7 @@ export default function AdminReportsPage() {
                       <p className="text-xs text-slate-400 mb-1">Status</p>
                       <Select
                         value={selectedReport.status || "pending"}
-                        disabled={selectedReportIsBusy}
+                        disabled={selectedReportIsBusy || selectedReportStatusIsReadOnly}
                         onValueChange={(value) => {
                           if (value === selectedReport.status) return
                           setStatusChangeTarget(value)
@@ -971,15 +1022,17 @@ export default function AdminReportsPage() {
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
                           <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                          <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
+                          <SelectItem value="in_progress" className="text-white">in progress</SelectItem>
                           <SelectItem value="resolved" className="text-white" disabled={selectedReport.status !== "resolved"}>
                             Resolved
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="mt-2 text-xs text-slate-400">
-                        Use the resolution section below to confirm the action taken before marking this report as resolved.
-                      </p>
+                      {canManageReportResolutions ? (
+                        <p className="mt-2 text-xs text-slate-400">
+                          Use the resolution section below to confirm the action taken before marking this report as resolved.
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Reporter</p>
@@ -1037,7 +1090,9 @@ export default function AdminReportsPage() {
                       <div>
                         <p className="text-sm font-semibold text-slate-900">Resolution Details</p>
                         <p className="text-xs text-slate-700">
-                          Record what was done to address the report. Confirming this section will automatically mark the report as resolved.
+                          {canManageReportResolutions
+                            ? "Record what was done to address the report. Confirming this section will automatically mark the report as resolved."
+                            : "Resolution details are view-only for this admin account."}
                         </p>
                       </div>
                       {selectedReport.status === "resolved" ? (
@@ -1048,6 +1103,12 @@ export default function AdminReportsPage() {
                       ) : null}
                     </div>
 
+                    {!canManageReportResolutions ? (
+                      <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-700">
+                        This admin account can view resolution details but cannot post or update them.
+                      </div>
+                    ) : null}
+
                     <div>
                       <p className="text-xs text-slate-700 mb-2">Resolution Description</p>
                       <Textarea
@@ -1055,7 +1116,7 @@ export default function AdminReportsPage() {
                         onChange={(event) => setResolutionDescription(event.target.value)}
                         placeholder="Describe the intervention, follow-up, and outcome for this report..."
                         rows={5}
-                        disabled={selectedReportIsBusy}
+                        disabled={selectedReportIsBusy || !canManageReportResolutions}
                         className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500 ring-1 ring-slate-200"
                       />
                     </div>
@@ -1080,7 +1141,7 @@ export default function AdminReportsPage() {
                           type="button"
                           variant="outline"
                           onClick={() => document.getElementById("resolution-attachments")?.click()}
-                          disabled={selectedReportIsBusy || totalResolutionFiles >= REPORT_MAX_FILES}
+                          disabled={selectedReportIsBusy || totalResolutionFiles >= REPORT_MAX_FILES || !canManageReportResolutions}
                           className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600"
                         >
                           <Upload className="mr-2 h-4 w-4" />
@@ -1122,7 +1183,7 @@ export default function AdminReportsPage() {
                           attachments={existingResolutionAttachments}
                           emptyMessage="No saved resolution media yet."
                           itemLabelPrefix="Resolution"
-                          onRemove={selectedReportIsBusy ? undefined : removeExistingResolutionAttachment}
+                          onRemove={selectedReportIsBusy || !canManageReportResolutions ? undefined : removeExistingResolutionAttachment}
                           variant="dark"
                         />
                       </div>
@@ -1130,37 +1191,41 @@ export default function AdminReportsPage() {
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-xs text-slate-400">
-                        {selectedReport.status === "resolved"
-                          ? "Update the saved resolution details here if more follow-up is needed."
-                          : "This report will move to Resolved once you confirm these details."}
+                        {!canManageReportResolutions
+                          ? "Resolution editing is disabled for this admin account."
+                          : selectedReport.status === "resolved"
+                            ? "Update the saved resolution details here if more follow-up is needed."
+                            : "This report will move to Resolved once you confirm these details."}
                       </p>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (!resolutionDescription.trim()) {
-                            toast({
-                              variant: "destructive",
-                              title: "Resolution description required",
-                              description: "Add a summary of the action taken before confirming the resolution.",
-                            })
-                            return
-                          }
-                          setIsResolutionConfirmOpen(true)
-                        }}
-                        disabled={selectedReportIsBusy || !resolutionDescription.trim()}
-                        className="bg-emerald-600 text-white hover:bg-emerald-500"
-                      >
-                        {isSavingResolution ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
-                          </>
-                        ) : selectedReport.status === "resolved" ? (
-                          "Update Resolution Details"
-                        ) : (
-                          "Confirm Resolution"
-                        )}
-                      </Button>
+                      {canManageReportResolutions ? (
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (!resolutionDescription.trim()) {
+                              toast({
+                                variant: "destructive",
+                                title: "Resolution description required",
+                                description: "Add a summary of the action taken before confirming the resolution.",
+                              })
+                              return
+                            }
+                            setIsResolutionConfirmOpen(true)
+                          }}
+                          disabled={selectedReportIsBusy || !resolutionDescription.trim()}
+                          className="bg-emerald-600 text-white hover:bg-emerald-500"
+                        >
+                          {isSavingResolution ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : selectedReport.status === "resolved" ? (
+                            "Update Resolution Details"
+                          ) : (
+                            "Confirm Resolution"
+                          )}
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
 

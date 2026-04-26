@@ -2,12 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { SUPER_ADMIN_EMAIL, getAdminPositionLabel, isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
+import {
+  ADMIN_ACCOUNT_POSITION_OPTIONS,
+  SUPER_ADMIN_EMAIL,
+  getAdminPositionLabel,
+  isSuperAdminEmail,
+  normalizeEmail,
+  normalizeSelectableAdminAccountPosition,
+} from "@/lib/admin"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -119,7 +127,7 @@ export function AdminAccountsManager() {
     setSuccessMessage("")
 
     const fullName = form.fullName.trim()
-    const position = form.position.trim()
+    const position = normalizeSelectableAdminAccountPosition(form.position)
     const email = normalizeEmail(form.email)
     const password = form.password
 
@@ -132,7 +140,7 @@ export function AdminAccountsManager() {
       return
     }
     if (!position) {
-      setErrorMessage("Position is required.")
+      setErrorMessage("Position must be Intern, Guidance Counselor, or Admin.")
       return
     }
     if (!email) {
@@ -331,12 +339,21 @@ export function AdminAccountsManager() {
 
                   <div className="space-y-2">
                     <Label className="text-slate-200">Position</Label>
-                    <Input
-                      value={form.position}
-                      onChange={(e) => setForm((prev) => ({ ...prev, position: e.target.value }))}
-                      placeholder="e.g., Guidance Counselor"
-                      className="bg-slate-700/50 border-slate-600 text-white"
-                    />
+                    <Select value={form.position || undefined} onValueChange={(value) => setForm((prev) => ({ ...prev, position: value }))}>
+                      <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-white">
+                        <SelectValue placeholder="Select a position" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {ADMIN_ACCOUNT_POSITION_OPTIONS.map((positionOption) => (
+                          <SelectItem key={positionOption} value={positionOption} className="text-white">
+                            {positionOption}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-400">
+                      Accounts with the Admin position can view report comments, but cannot post.
+                    </p>
                   </div>
 
                   <div className="space-y-2">

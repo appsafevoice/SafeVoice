@@ -6,6 +6,7 @@ import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { formatReportStatusLabel } from "@/lib/report-status"
 import { createBrowserClient } from "@/lib/supabase/client"
 import {
   ADMIN_CHART_AXIS,
@@ -274,9 +275,10 @@ export default function AdminDashboardPage() {
                         outerRadius={80}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) =>
-                          `${name} ${Number.isFinite(percent) ? (percent * 100).toFixed(0) : 0}%`
-                        }
+                        label={({ name, percent }) => {
+                          const percentValue = typeof percent === "number" ? percent : 0
+                          return `${name} ${(percentValue * 100).toFixed(0)}%`
+                        }}
                         labelLine={false}
                       >
                         {bullyingTypeData.map((_, index) => (
@@ -331,7 +333,7 @@ export default function AdminDashboardPage() {
                             : "border-slate-500 text-slate-400"
                       }
                     >
-                      {report.status || "pending"}
+                      {formatReportStatusLabel(report.status)}
                     </Badge>
                   </div>
                 ))}

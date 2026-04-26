@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { ReportComment } from "@/lib/supabase/types"
-import { getAdminPositionLabel } from "@/lib/admin"
+import { canAdminPostReportComments, getAdminPositionLabel, normalizeEmail } from "@/lib/admin"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { MessageSquare, Loader2 } from "lucide-react"
@@ -56,8 +56,10 @@ export function ReportCommentsThread({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentAdminName, setCurrentAdminName] = useState("Administrator")
   const [currentAdminPosition, setCurrentAdminPosition] = useState<string | null>(null)
+  const [adminCanPostComments, setAdminCanPostComments] = useState(authorRole !== "admin")
 
   const isDark = variant === "dark"
+  const canPostComment = authorRole === "student" || adminCanPostComments
 
   const loadComments = async () => {
     setLoading(true)
@@ -164,13 +166,14 @@ export function ReportCommentsThread({
         setCurrentUserId(null)
         setCurrentAdminName("Administrator")
         setCurrentAdminPosition(null)
+        setAdminCanPostComments(authorRole !== "admin")
         return
       }
 
       setCurrentUserId(user.id)
 
       if (authorRole === "admin") {
-        const userEmail = (user.email || "").trim().toLowerCase()
+        const userEmail = normalizeEmail(user.email)
         const { data: adminAccount } = await supabase
           .from("admin_accounts")
           .select("full_name, position")
@@ -182,11 +185,13 @@ export function ReportCommentsThread({
         const displayPosition = getAdminPositionLabel(adminAccount?.position, userEmail)
         setCurrentAdminName(displayName)
         setCurrentAdminPosition(displayPosition)
+        setAdminCanPostComments(canAdminPostReportComments(adminAccount?.position, userEmail))
         return
       }
 
       setCurrentAdminName("Administrator")
       setCurrentAdminPosition(null)
+      setAdminCanPostComments(true)
     }
 
     loadCurrentUser()
@@ -222,6 +227,12 @@ export function ReportCommentsThread({
 
     if (!user?.id) {
       setError("Your session expired. Sign in again to post a comment.")
+      setPosting(false)
+      return
+    }
+
+    if (authorRole === "admin" && !canPostComment) {
+      setError("This admin account can view report comments but cannot post.")
       setPosting(false)
       return
     }
@@ -322,24 +333,36 @@ export function ReportCommentsThread({
       </div>
 
       <div className="mt-2 space-y-2">
-        <Textarea
-          placeholder={authorRole === "admin" ? "Write a response to the student..." : "Write a follow-up message..."}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className={isDark ? "bg-slate-700/50 border-slate-600 text-white" : ""}
-          rows={3}
-        />
+        {canPostComment ? (
+          <Textarea
+            placeholder={authorRole === "admin" ? "Write a response to the student..." : "Write a follow-up message..."}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className={isDark ? "bg-slate-700/50 border-slate-600 text-white" : ""}
+            rows={3}
+          />
+        ) : (
+          <div
+            className={`rounded-md border px-3 py-2 text-xs ${
+              isDark ? "border-slate-600 bg-slate-700/40 text-slate-300" : "border-border bg-muted/50 text-muted-foreground"
+            }`}
+          >
+            This admin account can view report comments but cannot post.
+          </div>
+        )}
         {error && <p className={`text-xs ${isDark ? "text-red-300" : "text-destructive"}`}>{error}</p>}
-        <Button type="button" onClick={submitComment} disabled={posting || !content.trim()} className="w-full sm:w-auto">
-          {posting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Posting...
-            </>
-          ) : (
-            "Post Comment"
-          )}
-        </Button>
+        {canPostComment ? (
+          <Button type="button" onClick={submitComment} disabled={posting || !content.trim()} className="w-full sm:w-auto">
+            {posting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Posting...
+              </>
+            ) : (
+              "Post Comment"
+            )}
+          </Button>
+        ) : null}
       </div>
     </div>
   )
