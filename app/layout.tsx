@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 import { AddToHomeScreenPrompt } from "@/components/pwa/add-to-home-screen-prompt"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
