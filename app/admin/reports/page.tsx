@@ -862,7 +862,7 @@ export default function AdminReportsPage() {
                 <SelectContent className="bg-slate-800 border-slate-700">
                   <SelectItem value="all" className="text-white">All Status</SelectItem>
                   <SelectItem value="pending" className="text-white">Pending</SelectItem>
-                  <SelectItem value="in_progress" className="text-white">in progress</SelectItem>
+                  <SelectItem value="in_progress" className="text-white">In Progress</SelectItem>
                   <SelectItem value="resolved" className="text-white">Resolved</SelectItem>
                 </SelectContent>
               </Select>

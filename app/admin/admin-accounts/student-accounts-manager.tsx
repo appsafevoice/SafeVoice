@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { isSuperAdminEmail, normalizeEmail } from "@/lib/admin"
@@ -95,6 +96,7 @@ export function StudentAccountsManager() {
   const [students, setStudents] = useState<StudentAccountRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [verificationFilter, setVerificationFilter] = useState("all")
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
@@ -355,14 +357,21 @@ export function StudentAccountsManager() {
 
   const filteredStudents = students.filter((student) => {
     const query = searchTerm.trim().toLowerCase()
-    if (!query) return true
+    const matchesSearch =
+      !query ||
+      [
+        getStudentDisplayName(student),
+        student.email,
+        student.lrn || "",
+        student.student_id || "",
+      ].some((value) => value.toLowerCase().includes(query))
 
-    return [
-      getStudentDisplayName(student),
-      student.email,
-      student.lrn || "",
-      student.student_id || "",
-    ].some((value) => value.toLowerCase().includes(query))
+    const matchesVerification =
+      verificationFilter === "all" ||
+      (verificationFilter === "verified" && student.is_verified) ||
+      (verificationFilter === "not_verified" && !student.is_verified)
+
+    return matchesSearch && matchesVerification
   })
 
   return (
@@ -409,14 +418,27 @@ export function StudentAccountsManager() {
           </Alert>
         )}
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by student name, email, or LRN"
-            className="pl-9 bg-slate-700/50 border-slate-600 text-white"
-          />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by student name, email, or LRN"
+              className="pl-9 bg-slate-700/50 border-slate-600 text-white"
+            />
+          </div>
+
+          <Select value={verificationFilter} onValueChange={setVerificationFilter}>
+            <SelectTrigger className="w-full sm:w-48 bg-slate-700/50 border-slate-600 text-white">
+              <SelectValue placeholder="Verification" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectItem value="all" className="text-white">All verification</SelectItem>
+              <SelectItem value="verified" className="text-white">Verified</SelectItem>
+              <SelectItem value="not_verified" className="text-white">Not verified</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <p className="text-xs text-slate-400">
@@ -429,7 +451,7 @@ export function StudentAccountsManager() {
           </div>
         ) : filteredStudents.length === 0 ? (
           <div className="text-sm text-slate-400">
-            {students.length === 0 ? "No student accounts found." : "No student accounts match your search."}
+            {students.length === 0 ? "No student accounts found." : "No student accounts match your filters."}
           </div>
         ) : (
           <div className="space-y-2">
