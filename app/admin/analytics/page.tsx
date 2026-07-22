@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { waitForNextPaint } from "@/lib/browser-processing"
@@ -21,7 +23,7 @@ import {
   ADMIN_CHART_SURFACE,
   ADMIN_CHART_TEXT,
 } from "@/lib/admin-theme"
-import { Printer } from "lucide-react"
+import { Calendar as CalendarIcon, ChevronDown, Printer } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -90,6 +92,11 @@ export default function AdminAnalyticsPage() {
     const date = new Date()
     return date.toISOString().split("T")[0]
   })
+  const [monthlyStartOpen, setMonthlyStartOpen] = useState(false)
+  const [monthlyEndOpen, setMonthlyEndOpen] = useState(false)
+  const [aiRecommendations, setAiRecommendations] = useState<string[] | null>(null)
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   const [exportStart, setExportStart] = useState(() => {
     const date = new Date()
     date.setDate(date.getDate() - 13)
@@ -133,6 +140,60 @@ export default function AdminAnalyticsPage() {
       .replace(/'/g, "&#039;")
 
   const normalizeStatus = (status?: string | null) => status || "pending"
+
+  const getMonthLabel = (yearMonth: string) => {
+    const date = new Date(`${yearMonth}-01`)
+    return date.toLocaleString("default", { month: "short", year: "numeric" })
+  }
+
+  const parseYearMonth = (yearMonth: string) => new Date(`${yearMonth}-01`)
+  const formatYearMonth = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+
+  const buildAiPrompt = () => {
+    const statusMix = `Status mix: ${exportSummary.total ? ((exportSummary.resolved / exportSummary.total) * 100).toFixed(0) : 0}% resolved, ${exportSummary.total ? ((exportSummary.inProgress / exportSummary.total) * 100).toFixed(0) : 0}% in progress, ${exportSummary.total ? ((exportSummary.pending / exportSummary.total) * 100).toFixed(0) : 0}% pending.`
+    const topTypes = exportTypeDistribution.slice(0, 3)
+      .map((type) => `${type.name} (${type.value})`)
+      .join(", ")
+    const monthlyTrend = exportMonthlyTrend.length > 1
+      ? `Monthly trend changed from ${exportMonthlyTrend[0].reports} to ${exportMonthlyTrend[exportMonthlyTrend.length - 1].reports} reports.`
+      : "Monthly trend is stable or unavailable."
+    const dailyTop = exportDailyActivity.rows.reduce(
+      (max, row) => (row.reports > max.reports ? row : max),
+      { date: "", iso: "", reports: -1 },
+    )
+    const peakDay = dailyTop.reports >= 0 ? `${dailyTop.reports} reports on ${dailyTop.date}` : "No peak day available."
+
+    return `You are an expert school guidance counselor. Based on the following bullying incident summary, generate 3 to 5 actionable recommendations for a counselor, including prevention, student support, documentation, and follow-up actions.\n\nTimeline: ${exportRangeLabel}\nTotal reports: ${exportSummary.total}\n${statusMix}\nTop incident types: ${topTypes || "none"}\nPeak day: ${peakDay}\n${monthlyTrend}\nReported categories: ${exportTypeDistribution.map((type) => `${type.name}: ${type.value}`).join(", ")}\n\nOnly include practical next steps a counselor can take based on these data. Use plain, simple English suitable for any school staff or parent. Do not use Markdown or any asterisks ("**") — return plain text only. Provide 3 to 5 concise bullet points; each bullet should be a short sentence (8–20 words) starting with an action verb (e.g., "Meet with the student", "Contact parents"). Avoid technical terms and extra explanation.`
+  }
+
+  const handleGenerateAiRecommendations = async () => {
+    if (!isExportRangeValid || exportSummary.total === 0) {
+      setAiError("Select a valid timeline with reports before generating counselor guidance.")
+      return
+    }
+
+    setAiError(null)
+    setIsGeneratingAi(true)
+    setAiRecommendations(null)
+
+    try {
+      const response = await fetch("/api/generate-recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: buildAiPrompt() }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate recommendations")
+      }
+      setAiRecommendations(data.recommendations || [])
+    } catch (error) {
+      setAiError((error as Error)?.message || "Could not generate recommendations.")
+    } finally {
+      setIsGeneratingAi(false)
+    }
+  }
 
   const handleExportSectionChange =
     (key: ExportSectionKey) => (checked: boolean | "indeterminate") => {
@@ -493,6 +554,10 @@ export default function AdminAnalyticsPage() {
         sectionItems[0].items.push(item)
       }
     })
+
+    if (aiRecommendations && aiRecommendations.length > 0) {
+      sectionItems[2].items = aiRecommendations
+    }
 
     return sectionItems.map((section) => ({
       title: section.title,
@@ -877,22 +942,64 @@ export default function AdminAnalyticsPage() {
                 </CardDescription>
               </div>
               <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="month"
-                  value={monthlyStart}
-                  onChange={(e) => setMonthlyStart(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
-                />
-                <Input
-                  type="month"
-                  value={monthlyEnd}
-                  onChange={(e) => setMonthlyEnd(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white w-full sm:w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100"
-                />
+                <Popover open={monthlyStartOpen} onOpenChange={setMonthlyStartOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="justify-between bg-slate-700/50 border-slate-600 text-white w-full sm:w-40"
+                    >
+                      <span>{getMonthLabel(monthlyStart)}</span>
+                      <span className="flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4" />
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={parseYearMonth(monthlyStart)}
+                      onSelect={(date) => {
+                        if (date) {
+                          setMonthlyStart(formatYearMonth(date))
+                          setMonthlyStartOpen(false)
+                        }
+                      }}
+                      defaultMonth={parseYearMonth(monthlyStart)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover open={monthlyEndOpen} onOpenChange={setMonthlyEndOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="justify-between bg-slate-700/50 border-slate-600 text-white w-full sm:w-40"
+                    >
+                      <span>{getMonthLabel(monthlyEnd)}</span>
+                      <span className="flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4" />
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={parseYearMonth(monthlyEnd)}
+                      onSelect={(date) => {
+                        if (date) {
+                          setMonthlyEnd(formatYearMonth(date))
+                          setMonthlyEndOpen(false)
+                        }
+                      }}
+                      defaultMonth={parseYearMonth(monthlyEnd)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
+              <div className="relative h-72 w-full min-w-0 min-h-0">
                 {monthlyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={monthlyData}>
@@ -955,7 +1062,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
+              <div className="relative h-72 w-full min-w-0 min-h-0">
                 {!isTypeDistRangeValid ? (
                   <div className="h-full flex items-center justify-center text-slate-500">Select a valid date range</div>
                 ) : typeData.length > 0 ? (
@@ -1026,7 +1133,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-72">
+              <div className="relative h-72 w-full min-w-0 min-h-0">
                 {dailyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dailyData}>
@@ -1058,11 +1165,23 @@ export default function AdminAnalyticsPage() {
 
         {/* Descriptive Analysis */}
         <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Descriptive Analysis</CardTitle>
-            <CardDescription className="text-slate-400">
-              Observations, trends, and recommendations for the current report timeline
-            </CardDescription>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-white">Descriptive Analysis</CardTitle>
+              <CardDescription className="text-slate-400">
+                Observations, trends, and recommendations for the current report timeline
+              </CardDescription>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <Button
+                variant="secondary"
+                onClick={handleGenerateAiRecommendations}
+                disabled={isGeneratingAi || !isExportRangeValid || exportSummary.total === 0}
+              >
+                {isGeneratingAi ? "Generating guidance..." : "Generate AI Recommendations"}
+              </Button>
+              {aiError ? <p className="text-xs text-rose-300">{aiError}</p> : null}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 lg:grid-cols-3">

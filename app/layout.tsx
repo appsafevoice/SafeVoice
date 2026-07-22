@@ -1,13 +1,11 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/react"
 import { AddToHomeScreenPrompt } from "@/components/pwa/add-to-home-screen-prompt"
 import { Toaster } from "@/components/ui/toaster"
+import { LoadingProvider } from "@/components/ui/loading-context"
+import { RouteLoader } from "@/components/ui/route-loader"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "SafeVoice - Report Bullying Safely",
@@ -42,7 +40,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased min-h-screen`}>
-        {children}
+        <LoadingProvider>
+          <RouteLoader />
+          {children}
+        </LoadingProvider>
         <AddToHomeScreenPrompt />
         <Toaster />
         <Analytics />

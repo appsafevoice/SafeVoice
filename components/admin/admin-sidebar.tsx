@@ -3,11 +3,23 @@
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Home, FileText, BarChart3, Upload, UserCog, ShieldCheck, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { getAdminPositionLabel, isSuperAdminEmail } from "@/lib/admin"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface AdminSidebarProps {
   open: boolean
@@ -28,6 +40,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient()
+  const [loggingOut, setLoggingOut] = useState(false)
   const isSuperAdmin = isSuperAdminEmail(adminEmail)
   const roleLabel = getAdminPositionLabel(adminPosition, adminEmail)
   const navItems = isSuperAdmin
@@ -35,6 +48,7 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
     : baseNavItems
 
   const handleLogout = async () => {
+    setLoggingOut(true)
     await supabase.auth.signOut()
     router.push("/login")
   }
@@ -97,14 +111,37 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
 
           {/* Footer */}
           <div className="p-4 border-t border-white/10">
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="w-full justify-start gap-3 !text-white/95 hover:!text-white hover:bg-white/10"
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 !text-white/95 hover:!text-white hover:bg-white/10"
+                  disabled={loggingOut}
+                >
+                  <LogOut className="h-5 w-5" />
+                  Logout
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-slate-900 border border-slate-700 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to log out? You will need to sign in again to access the admin dashboard.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-slate-600 bg-slate-700 text-slate-100 hover:bg-slate-600 hover:text-white">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLogout}
+                    className="bg-rose-600 text-white hover:bg-rose-500 focus-visible:ring-rose-500/40"
+                  >
+                    Confirm Logout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </aside>

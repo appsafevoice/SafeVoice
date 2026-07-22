@@ -56,6 +56,7 @@ export function ReportForm({ userId }: ReportFormProps) {
     otherLocation: "",
     details: "",
     gender: "",
+    reportFor: 'self',
   })
 
   const isAcceptedFile = (file: File): boolean => {
@@ -180,6 +181,7 @@ export function ReportForm({ userId }: ReportFormProps) {
       const reportData = {
         user_id: userId,
         reporter_name: reporterName,
+        reporter_for: formData.reportFor,
         incident_date: formData.incidentDate,
         bullying_type: formData.bullyingType,
         details: `Location: ${locationLabel}\n\n${formData.details}`,
@@ -321,6 +323,20 @@ export function ReportForm({ userId }: ReportFormProps) {
                   />
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>Reporting For</Label>
+                <RadioGroup value={formData.reportFor} onValueChange={(value) => setFormData({ ...formData, reportFor: value })} className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="self" id="reportfor-self" />
+                    <Label htmlFor="reportfor-self" className="font-normal cursor-pointer">Reporting for me</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="other" id="reportfor-other" />
+                    <Label htmlFor="reportfor-other" className="font-normal cursor-pointer">Reporting for someone else</Label>
+                  </div>
+                </RadioGroup>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="details">Details of the Incident *</Label>

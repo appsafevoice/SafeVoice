@@ -210,7 +210,7 @@ export default function AdminDashboardPage() {
               <CardDescription className="text-slate-400">Reports submitted in the last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
+              <div className="relative h-64 w-full min-w-0 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={weeklyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={ADMIN_CHART_GRID} />
@@ -261,7 +261,7 @@ export default function AdminDashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
+              <div className="relative h-64 w-full min-w-0 min-h-0">
                 {!isCategoryRangeValid ? (
                   <div className="h-full flex items-center justify-center text-slate-500">Select a valid date range</div>
                 ) : bullyingTypeData.length > 0 ? (

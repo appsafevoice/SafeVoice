@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { BottomNav } from "./bottom-nav"
+// loading overlay removed
 
 interface AppShellProps {
   children: ReactNode
