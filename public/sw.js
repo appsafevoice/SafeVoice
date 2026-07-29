@@ -1,5 +1,5 @@
 const CACHE_NAME = "safevoice-shell-v1"
-const APP_SHELL = ["/manifest.json", "/icon-192.png", "/icon-512.png", "/apple-icon.png", "/images/safe-voice-logo.png"]
+const APP_SHELL = ["/manifest.json", "/SafeVoiceLogo.png"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

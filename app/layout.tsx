@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     title: "SafeVoice",
   },
   icons: {
-    icon: [{ url: "/icon-192.png", type: "image/png", sizes: "192x192" }],
-    shortcut: "/icon-192.png",
-    apple: "/apple-icon.png",
+    icon: [{ url: "/SafeVoiceLogo.png", type: "image/png", sizes: "192x192" }],
+    shortcut: "/SafeVoiceLogo.png",
+    apple: "/SafeVoiceLogo.png",
   },
 }
 

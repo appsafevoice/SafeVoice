@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { useLoading } from "./loading-context"
 import { Loader2 } from "lucide-react"
 
 export function RouteLoader() {
   const { loading } = useLoading()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [show, setShow] = useState(false)
+  const isAdminRoute = pathname?.startsWith("/admin")
 
   useEffect(() => {
     setMounted(true)
@@ -26,7 +29,7 @@ export function RouteLoader() {
     }
   }, [loading])
 
-  if (!mounted || !show) return null
+  if (!mounted || !show || isAdminRoute) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

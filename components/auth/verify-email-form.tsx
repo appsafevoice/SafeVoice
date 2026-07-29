@@ -12,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
-import { Logo } from "@/components/ui/logo"
 
 type VerifyEmailFormProps = {
   initialEmail?: string
@@ -152,9 +151,7 @@ export function VerifyEmailForm({ initialEmail = "", context = "signup" }: Verif
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10 bg-background">
       <div className="w-full max-w-lg space-y-6">
-        <div className="flex justify-center">
-          <Logo size="lg" />
-        </div>
+        <div className="flex justify-center"></div>
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4 text-center">

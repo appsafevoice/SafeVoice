@@ -1,12 +1,12 @@
 "use client"
 
-import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Home, FileText, BarChart3, Upload, UserCog, ShieldCheck, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { getAdminPositionLabel, isSuperAdminEmail } from "@/lib/admin"
 import {
@@ -69,18 +69,14 @@ export function AdminSidebar({ open, onClose, adminEmail, adminPosition }: Admin
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                <Image
-                  src="/images/safe-voice-logo.png"
-                  alt="SafeVoice logo"
-                  width={24}
-                  height={24}
-                  className="h-6 w-6 object-contain"
-                />
-              </div>
-              <div className="flex flex-col justify-center">
-                <h2 className="font-semibold text-white/95">SafeVoice</h2>
-                <p className="text-xs text-white/70">{roleLabel}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-20 h-20 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Logo size="lg" showText={false} />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <h2 className="font-semibold text-white/95">SafeVoice</h2>
+                  <p className="text-xs text-white/70">{roleLabel}</p>
+                </div>
               </div>
             </div>
             <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white/95">

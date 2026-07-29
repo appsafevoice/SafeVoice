@@ -40,7 +40,34 @@ export async function POST(request: NextRequest) {
 
     const bodyText = await response.text()
     if (!response.ok) {
-      return NextResponse.json({ error: `AI request failed`, details: `Endpoint ${endpoint} returned ${response.status}: ${bodyText}` }, { status: 502 })
+      const providerError = (() => {
+        try {
+          return JSON.parse(bodyText)?.error?.message as string | undefined
+        } catch {
+          return undefined
+        }
+      })()
+
+      if (response.status === 401) {
+        return NextResponse.json(
+          {
+            error: "Google AI rejected the API key. Create a Gemini API key in Google AI Studio and update GOOGLE_AI_API_KEY.",
+          },
+          { status: 502 },
+        )
+      }
+
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: "Google AI request limit reached. Wait a moment, or check the project's Gemini quota and billing." },
+          { status: 429 },
+        )
+      }
+
+      return NextResponse.json(
+        { error: providerError || `Google AI request failed (HTTP ${response.status}).` },
+        { status: 502 },
+      )
     }
 
     let data: any

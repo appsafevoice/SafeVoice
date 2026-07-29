@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Logo } from "@/components/ui/logo"
 import { Mail } from "lucide-react"
 import Link from "next/link"
 
@@ -7,9 +6,7 @@ export default function SignupSuccessPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10 bg-background">
       <div className="w-full max-w-lg space-y-6">
-        <div className="flex justify-center">
-          <Logo size="lg" />
-        </div>
+        <div className="flex justify-center"></div>
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4 text-center">

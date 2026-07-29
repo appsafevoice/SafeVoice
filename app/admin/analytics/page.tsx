@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -57,11 +56,6 @@ type ExportSectionKey =
   | "descriptiveAnalysis"
 
 type ExportSectionsState = Record<ExportSectionKey, boolean>
-
-interface ExportLoadingState {
-  progress: number
-  description: string
-}
 
 export default function AdminAnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([])
@@ -114,7 +108,6 @@ export default function AdminAnalyticsPage() {
     descriptiveAnalysis: true,
   }))
   const [isExporting, setIsExporting] = useState(false)
-  const [exportLoadingState, setExportLoadingState] = useState<ExportLoadingState | null>(null)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -570,19 +563,8 @@ export default function AdminAnalyticsPage() {
 
     setPreviewHtml(null)
     setIsExporting(true)
-    setExportLoadingState({
-      progress: 8,
-      description: "Opening a print workspace for the export.",
-    })
-
     try {
-      // Yield between stages so React can paint the loading screen before each chunk of work.
       await waitForNextPaint()
-
-      setExportLoadingState({
-        progress: 28,
-        description: "Compiling the selected report sections.",
-      })
       await waitForNextPaint()
 
       const summarySection = `
@@ -653,10 +635,6 @@ export default function AdminAnalyticsPage() {
         .filter(Boolean)
         .join("")
 
-      setExportLoadingState({
-        progress: 62,
-        description: "Building the printable document.",
-      })
       await waitForNextPaint()
 
       const printHtml = `
@@ -694,22 +672,12 @@ export default function AdminAnalyticsPage() {
         </html>
       `
 
-      setExportLoadingState({
-        progress: 88,
-        description: "Preparing preview.",
-      })
       await waitForNextPaint()
 
       setPreviewHtml(printHtml)
-
-      setExportLoadingState({
-        progress: 100,
-        description: "Preview is ready.",
-      })
       await waitForNextPaint()
     } finally {
       setIsExporting(false)
-      setExportLoadingState(null)
     }
   }
 
@@ -733,15 +701,6 @@ export default function AdminAnalyticsPage() {
 
   return (
     <AdminLayout>
-      {exportLoadingState && (
-        <LoadingScreen
-          mode="overlay"
-          title="Preparing data report"
-          description={exportLoadingState.description}
-          progress={exportLoadingState.progress}
-        />
-      )}
-
       <Dialog open={Boolean(previewHtml)} onOpenChange={(open) => !open && setPreviewHtml(null)}>
         <DialogContent className="grid grid-rows-[auto_auto_1fr] h-[min(90vh,calc(100vh-4rem))] w-[min(80vw,72rem)] max-w-[80vw] overflow-hidden bg-slate-900 border border-slate-700 p-0">
           <DialogHeader className="border-b border-slate-700 px-6 py-4">

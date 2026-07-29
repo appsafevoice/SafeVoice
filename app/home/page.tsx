@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { AppShell } from "@/components/layout/app-shell"
-import { Logo } from "@/components/ui/logo"
 import { ReportButton } from "@/components/home/report-button"
 import { AnnouncementsFeed } from "@/components/home/announcements-feed"
 import { StudentReportCommentsNotificationsBell } from "@/components/student/student-report-comments-notifications-bell"
+import { Logo } from "@/components/ui/logo"
 import type { Announcement, Profile } from "@/lib/supabase/types"
 import { redirect } from "next/navigation"
 import { normalizeEmail } from "@/lib/admin"
@@ -99,15 +99,15 @@ export default async function HomePage() {
     <AppShell reportingDisabled={reportingDisabled}>
       <div className="w-full max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 sm:gap-8">
         {/* Header */}
-        <header className="flex items-start justify-between gap-4 pt-2">
-          <Logo size="sm" />
-          <div className="flex items-start gap-3 min-w-0">
-            <StudentReportCommentsNotificationsBell />
-            <div className="text-right min-w-0">
+        <header className="flex items-center justify-between gap-4 pt-2">
+          <div className="flex items-center gap-3">
+            <Logo size="lg" showText={false} />
+            <div className="text-left min-w-0">
               <p className="text-sm text-muted-foreground">Welcome back,</p>
               <p className="font-semibold text-foreground truncate">{profile?.first_name || "Student"}</p>
             </div>
           </div>
+          <StudentReportCommentsNotificationsBell />
         </header>
 
         {/* Report Button */}

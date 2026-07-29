@@ -3,9 +3,10 @@ import Image from "next/image"
 interface LogoProps {
   size?: "sm" | "md" | "lg"
   showText?: boolean
+  className?: string
 }
 
-export function Logo({ size = "md", showText = true }: LogoProps) {
+export function Logo({ size = "md", showText = true, className = "" }: LogoProps) {
   const sizeClasses = {
     sm: "w-8 h-8",
     md: "w-12 h-12",
@@ -19,10 +20,10 @@ export function Logo({ size = "md", showText = true }: LogoProps) {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className={`flex items-center ${showText ? "gap-3" : ""} ${className}`.trim()}>
       <div className={sizeClasses[size]}>
         <Image
-          src="/images/safe-voice-logo.png"
+          src="/SafeVoiceLogo.png"
           alt="SafeVoice Logo"
           width={80}
           height={80}

@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
@@ -47,11 +46,6 @@ interface Report {
   resolved_at: string | null
 }
 
-interface PrintLoadingState {
-  progress: number
-  description: string
-}
-
 export default function AdminReportsPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -69,7 +63,6 @@ export default function AdminReportsPage() {
   const reportPreviewFrameRef = useRef<HTMLIFrameElement | null>(null)
   const [reportPendingDelete, setReportPendingDelete] = useState<Report | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
-  const [printLoadingState, setPrintLoadingState] = useState<PrintLoadingState | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [currentAdminPosition, setCurrentAdminPosition] = useState<string | null>(null)
   const [processingReportId, setProcessingReportId] = useState<string | null>(null)
@@ -664,13 +657,7 @@ export default function AdminReportsPage() {
   const handlePrintReport = async (report: Report) => {
     setReportPreviewHtml(null)
     setIsPrinting(true)
-    setPrintLoadingState({
-      progress: 25,
-      description: "Compiling report details.",
-    })
-
     try {
-      // Yield between stages so React can paint the loading screen before each chunk of work.
       await waitForNextPaint()
 
       const attachmentsHtml = buildPrintAttachmentsHtml(report.attachments || [], "Attachment")
@@ -690,10 +677,6 @@ export default function AdminReportsPage() {
         </div>
       ` : ""
 
-      setPrintLoadingState({
-        progress: 75,
-        description: "Building printable layout.",
-      })
       await waitForNextPaint()
 
       const printHtml = `
@@ -738,16 +721,11 @@ export default function AdminReportsPage() {
         </html>
       `
 
-      setPrintLoadingState({
-        progress: 100,
-        description: "Preview is ready.",
-      })
       await waitForNextPaint()
 
       setReportPreviewHtml(printHtml)
     } finally {
       setIsPrinting(false)
-      setPrintLoadingState(null)
     }
   }
 
@@ -798,15 +776,6 @@ export default function AdminReportsPage() {
 
   return (
     <AdminLayout>
-      {printLoadingState && (
-        <LoadingScreen
-          mode="overlay"
-          title="Preparing report details"
-          description={printLoadingState.description}
-          progress={printLoadingState.progress}
-        />
-      )}
-
       <Dialog open={Boolean(reportPreviewHtml)} onOpenChange={(open) => !open && setReportPreviewHtml(null)}>
         <DialogContent className="grid grid-rows-[auto_auto_1fr] h-[min(90vh,calc(100vh-4rem))] w-[min(80vw,72rem)] max-w-[80vw] overflow-hidden bg-slate-900 border border-slate-700 p-0">
           <DialogHeader className="border-b border-slate-700 px-6 py-4">

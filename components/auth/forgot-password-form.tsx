@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Logo } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, ArrowLeft, CheckCircle } from "lucide-react"
 
@@ -107,9 +106,7 @@ export function ForgotPasswordForm() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-6">
-        <div className="flex justify-center">
-          <Logo size="lg" />
-        </div>
+        <div className="flex justify-center"></div>
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4">
