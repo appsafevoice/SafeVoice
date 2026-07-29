@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react"
+import { Suspense, useEffect, useRef, useState, type ChangeEvent } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import {
@@ -46,7 +46,7 @@ interface Report {
   resolved_at: string | null
 }
 
-export default function AdminReportsPage() {
+function AdminReportsContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1309,5 +1309,19 @@ export default function AdminReportsPage() {
         </AlertDialog>
       </div>
     </AdminLayout>
+  )
+}
+
+export default function AdminReportsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-white">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#810000]" />
+        </div>
+      }
+    >
+      <AdminReportsContent />
+    </Suspense>
   )
 }
