@@ -40,10 +40,15 @@ interface Report {
   incident_date: string
   details: string
   reporter_name: string | null
+  reporter_for: "self" | "other" | null
   attachments: string[] | null
   resolution_description: string | null
   resolution_attachments: string[] | null
   resolved_at: string | null
+}
+
+function formatReporterFor(value: Report["reporter_for"]) {
+  return value === "other" ? "Someone else" : "Me"
 }
 
 function AdminReportsContent() {
@@ -706,6 +711,7 @@ function AdminReportsContent() {
               <div class="field"><span class="label">Submitted:</span>${new Date(report.created_at).toLocaleString()}</div>
               <div class="field"><span class="label">Incident Date:</span>${report.incident_date ? new Date(report.incident_date).toLocaleDateString() : "Not specified"}</div>
               <div class="field"><span class="label">Reporter:</span>${escapeHtml(report.reporter_name || "Unknown Student")}</div>
+              <div class="field"><span class="label">Reported For:</span>${formatReporterFor(report.reporter_for)}</div>
               <div class="field"><span class="label">Type:</span>${escapeHtml(report.bullying_type || "Unknown")}</div>
               <div class="field"><span class="label">Status:</span>${escapeHtml(formatReportStatusLabel(report.status))}</div>
             </div>
@@ -1006,6 +1012,10 @@ function AdminReportsContent() {
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Reporter</p>
                       <p className="text-sm text-white">{selectedReport.reporter_name || "Unknown Student"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Reported For</p>
+                      <p className="text-sm text-white">{formatReporterFor(selectedReport.reporter_for)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Incident Date</p>
