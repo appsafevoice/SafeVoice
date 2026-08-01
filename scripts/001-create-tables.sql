@@ -44,13 +44,16 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile" ON profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- Allow inserts from the current user or from Supabase trigger/service role session contexts.
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile" ON profiles
   FOR INSERT WITH CHECK (
     auth.uid() = id
@@ -60,12 +63,15 @@ CREATE POLICY "Users can insert own profile" ON profiles
   );
 
 -- RLS Policies for reports
+DROP POLICY IF EXISTS "Users can view own reports" ON reports;
 CREATE POLICY "Users can view own reports" ON reports
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert reports" ON reports;
 CREATE POLICY "Users can insert reports" ON reports
   FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
 
 -- RLS Policies for announcements (public read)
+DROP POLICY IF EXISTS "Anyone can view active announcements" ON announcements;
 CREATE POLICY "Anyone can view active announcements" ON announcements
   FOR SELECT USING (is_active = true);
