@@ -18,6 +18,7 @@ export interface Report {
   id: string
   user_id?: string
   reporter_name?: string
+  reporter_for?: "self" | "other"
   incident_date: string
   bullying_type: string
   details: string

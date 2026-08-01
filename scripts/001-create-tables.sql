@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   reporter_name VARCHAR(200),
+  reporter_for VARCHAR(20) NOT NULL DEFAULT 'self' CHECK (reporter_for IN ('self', 'other')),
   incident_date DATE NOT NULL,
   bullying_type VARCHAR(50) NOT NULL,
   details TEXT NOT NULL,
